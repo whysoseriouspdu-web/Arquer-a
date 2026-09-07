@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Registro de arquería</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#151A19">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TAPURU">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --base:#151A19; --surface:#1D2422; --surface-2:#252E2B; --line:#35423E;
+    --text:#EDF0EC; --muted:#93A09A; --gold:#F2C230; --red:#D8483C;
+    --blue:#2E7CC4; --paper:#EFEDE6; --slate:#0F1312;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{background:var(--base)}
+  body{margin:0;background:var(--base);color:var(--text);
+    font-family:"Barlow Semi Condensed",-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:17px;line-height:1.4;
+    padding:env(safe-area-inset-top) 0 calc(16px + env(safe-area-inset-bottom));
+    max-width:560px;margin:0 auto;-webkit-user-select:none;user-select:none}
+  h1,h2,h3{margin:0;font-weight:700;letter-spacing:.01em}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  input,textarea{-webkit-user-select:text;user-select:text}
+  .wrap{padding:0 16px}
+  .hidden{display:none !important}
+
+  .top{display:flex;align-items:center;gap:13px;padding:20px 16px 14px}
+  .top h1{font-size:24px;line-height:1.15}
+  .top span{color:var(--muted);font-size:15px}
+  .logo{width:46px;height:auto;flex:0 0 auto}
+
+  .warn{border-left:3px solid var(--red);background:var(--surface);border-radius:8px;
+    padding:12px 14px;margin-bottom:16px;font-size:15.5px;color:var(--muted);line-height:1.45}
+  .warn b{color:var(--text)}
+
+  .summary{display:flex;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin-bottom:22px}
+  .summary div{flex:1;background:var(--surface);padding:12px 10px}
+  .summary b{display:block;font-size:26px;font-weight:700;line-height:1.1}
+  .summary small{color:var(--muted);font-size:13.5px}
+
+  .primary{display:block;width:100%;background:var(--gold);color:var(--slate);
+    font-size:20px;font-weight:700;padding:16px;border-radius:10px;margin-bottom:8px}
+  .primary:active{transform:translateY(1px)}
+  .ghost{display:block;width:100%;border:1px solid var(--line);border-radius:10px;
+    padding:13px;color:var(--muted);font-size:17px;text-align:center}
+
+  .chart-head{display:flex;justify-content:space-between;align-items:baseline;margin:26px 0 8px}
+  .chart-head h2{font-size:19px}
+  .chart-head em{font-style:normal;color:var(--muted);font-size:14px}
+  svg.chart{width:100%;height:120px;display:block}
+
+  .sess{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    padding:13px 0;border-bottom:1px solid var(--line)}
+  .sess .d{font-size:22px;font-weight:700;min-width:62px}
+  .sess .m{flex:1;color:var(--muted);font-size:15px}
+  .sess .m b{display:block;color:var(--text);font-size:17px;font-weight:600}
+  .sess .avg{font-size:22px;font-weight:700;color:var(--gold)}
+  .empty{color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:20px;text-align:center}
+
+  label{display:block;color:var(--muted);font-size:15px;margin:18px 0 7px}
+  .opts{display:flex;gap:8px;flex-wrap:wrap}
+  .opt{border:1px solid var(--line);border-radius:8px;padding:11px 15px;font-size:17px;font-weight:600;color:var(--muted)}
+  .opt[aria-pressed="true"]{background:var(--text);color:var(--slate);border-color:var(--text)}
+  input[type=text],input[type=password],textarea{width:100%;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;color:var(--text);padding:11px;font:inherit}
+  .addrow{display:flex;gap:8px}
+  .addrow button{border:1px solid var(--line);border-radius:8px;padding:0 16px;color:var(--gold);font-weight:600}
+  .people{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .person{display:flex;align-items:center;gap:6px;background:var(--surface-2);border-radius:20px;
+    padding:8px 8px 8px 14px;font-size:16px;font-weight:600}
+  .person i{font-style:normal;color:var(--muted);font-size:19px;line-height:1;padding:0 5px}
+  .person.fixed{background:var(--surface);color:var(--muted);padding:8px 14px}
+  .suggest{color:var(--muted);font-size:14px;margin:14px 0 0}
+
+  .tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}
+  .tab{flex:0 0 auto;border:1px solid var(--line);border-radius:9px;padding:9px 13px;text-align:left;min-width:92px}
+  .tab b{display:block;font-size:16px;font-weight:600;color:var(--muted);white-space:nowrap}
+  .tab span{font-size:19px;font-weight:700;color:var(--muted)}
+  .tab[aria-pressed="true"]{background:var(--gold);border-color:var(--gold)}
+  .tab[aria-pressed="true"] b,.tab[aria-pressed="true"] span{color:var(--slate)}
+
+  .live{background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .live .row{display:flex;align-items:flex-end;justify-content:space-between}
+  .live .total{font-size:52px;font-weight:700;line-height:.95}
+  .live .total small{font-size:16px;color:var(--muted);font-weight:500}
+  .live .side{text-align:right;color:var(--muted);font-size:14.5px;line-height:1.5}
+  .live .side b{color:var(--text);font-size:19px;font-weight:700}
+  .who{color:var(--gold);font-size:15px;font-weight:600;margin-bottom:4px}
+  .ends{margin-top:14px;max-height:160px;overflow-y:auto}
+  .end{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--line)}
+  .end .n{color:var(--muted);font-size:14px;min-width:22px}
+  .chip{min-width:29px;height:29px;border-radius:5px;display:grid;place-items:center;
+    font-size:15px;font-weight:700;color:var(--slate);background:var(--surface-2)}
+  .chip.g{background:var(--gold)} .chip.r{background:var(--red);color:#fff}
+  .chip.b{background:var(--blue);color:#fff} .chip.k{background:#0C100F;color:#fff}
+  .chip.w{background:var(--paper)} .chip.m{background:var(--surface-2);color:var(--muted)}
+  .end .t{margin-left:auto;font-weight:700;font-size:17px}
+  .end .t i{font-style:normal;color:var(--muted);font-weight:400;font-size:14px;margin-left:6px}
+
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .key{height:58px;border-radius:9px;font-size:23px;font-weight:700;color:var(--slate);display:grid;place-items:center}
+  .key:active{filter:brightness(.86)}
+  .key.g{background:var(--gold)} .key.r{background:var(--red);color:#fff}
+  .key.b{background:var(--blue);color:#fff} .key.k{background:#0C100F;color:#fff;border:1px solid var(--line)}
+  .key.w{background:var(--paper)} .key.m{background:var(--surface-2);color:var(--muted)}
+  .pad-foot{display:flex;gap:8px;margin-top:9px}
+  .pad-foot button{flex:1;border:1px solid var(--line);border-radius:9px;padding:12px;color:var(--muted);font-size:16px}
+  .pad-foot .fin{background:var(--gold);color:var(--slate);border-color:var(--gold);font-weight:700}
+
+  .back{color:var(--muted);font-size:16px;padding:18px 16px 4px;display:block}
+  .arq-head{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 2px}
+  .arq-head h3{font-size:19px}
+  .arq-head span{color:var(--gold);font-weight:700;font-size:19px}
+  .note{color:var(--muted);font-size:16px;margin-top:14px;white-space:pre-wrap}
+  .danger{color:var(--red);border:1px solid var(--line);border-radius:9px;padding:12px;width:100%;margin-top:26px;font-size:16px}
+  .tools{display:flex;gap:8px;margin:26px 0 10px}
+  .tools button{flex:1;border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--muted);font-size:15px}
+  .hint{color:var(--muted);font-size:13.5px;text-align:center;margin:0 0 8px}
+
+  .acct{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);
+    margin-top:18px;padding-top:14px;font-size:15px;color:var(--muted)}
+  .acct .st{flex:1;line-height:1.35}
+  .acct .st b{display:block;color:var(--text);font-size:16px;font-weight:600}
+  .acct button{border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--muted);font-size:15px}
+  .acct .sy{color:var(--gold);border-color:var(--gold)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px}
+  .dot.ok{background:#4FA96A} .dot.pend{background:var(--gold)} .dot.off{background:var(--red)}
+  .socio{border-bottom:1px solid var(--line);padding:13px 0}
+  .socio .l1{display:flex;align-items:baseline;gap:8px}
+  .socio .l1 b{font-size:17px;font-weight:600;flex:1}
+  .socio .l1 em{font-style:normal;color:var(--muted);font-size:14px}
+  .socio .l2{color:var(--muted);font-size:14px;margin-top:2px}
+  .roles{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .rol{border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:14.5px;color:var(--muted)}
+  .rol[aria-pressed="true"]{background:var(--gold);color:var(--slate);border-color:var(--gold);font-weight:700}
+  .rol.out{color:var(--red);margin-left:auto}
+  .codigo{background:var(--surface);border-radius:10px;padding:14px 16px;margin:14px 0 6px}
+  .codigo b{display:block;font-size:30px;letter-spacing:.14em;font-weight:700}
+  .codigo small{color:var(--muted);font-size:14px}
+  .sheet{position:fixed;inset:0;background:rgba(10,13,12,.72);display:grid;place-items:end center;padding:16px;z-index:9}
+  .sheet-inner{background:var(--surface);border-radius:14px;padding:18px;width:100%;max-width:528px}
+  .sheet h3{font-size:20px;margin-bottom:6px}
+  .sheet p{color:var(--muted);font-size:15px;margin:0 0 14px}
+  .sheet .row2{display:flex;gap:8px}
+  .sheet .row2 button{flex:1;border-radius:9px;padding:12px;font-size:16px;border:1px solid var(--line);color:var(--muted)}
+  .sheet .row2 .ok{background:var(--gold);color:var(--slate);border-color:var(--gold);font-weight:700}
+
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--paper);
+    color:var(--slate);padding:11px 18px;border-radius:20px;font-weight:600;font-size:16px;
+    opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;max-width:88%;text-align:center}
+  .toast.on{opacity:1}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<section id="v-home">
+  <div class="top">
+    <img src="logo-club.png" alt="" class="logo">
+    <div style="flex:1"><h1>Registro de arquería</h1><span id="top-club">recurvo</span></div>
+  </div>
+  <div class="wrap">
+    <div class="warn hidden" id="warn">
+      <b>Instalala antes de tirar.</b>
+      Abierta desde el navegador, el teléfono puede borrar los registros solo.
+      Tocá compartir en Safari y elegí <b>Agregar a inicio</b>; después usala siempre desde ese ícono.
+    </div>
+    <div class="summary">
+      <div><b id="s-sess">0</b><small>sesiones</small></div>
+      <div><b id="s-arrows">0</b><small>mis flechas</small></div>
+      <div><b id="s-best">—</b><small>mejor promedio</small></div>
+    </div>
+    <button class="primary" id="go-new">Empezar sesión</button>
+    <button class="ghost hidden" id="go-resume">Retomar sesión sin terminar</button>
+    <button class="ghost hidden" id="go-install" style="margin-top:8px;border-color:var(--gold);color:var(--gold)">Instalar en el celular</button>
+
+    <div id="chart-box" class="hidden">
+      <div class="chart-head"><h2>Mi promedio por flecha</h2><em id="chart-range"></em></div>
+      <svg class="chart" id="chart" viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true"></svg>
+    </div>
+
+    <div class="chart-head"><h2>Sesiones</h2></div>
+    <div id="list"></div>
+
+    <div class="tools">
+      <button id="exp-json">Guardar respaldo</button>
+      <button id="exp-csv">Exportar CSV</button>
+      <button id="imp">Restaurar</button>
+    </div>
+    <p class="hint">Los datos se guardan en el teléfono. Hacé un respaldo cada tanto.</p>
+    <div class="acct" id="acct"></div>
+    <button class="ghost hidden" id="go-club" style="margin-top:10px">Mi club</button>
+    <input type="file" id="file" accept="application/json,.json" class="hidden">
+  </div>
+</section>
+
+<section id="v-new" class="hidden">
+  <button class="back" id="new-back">← Volver</button>
+  <div class="wrap">
+    <h1 style="font-size:25px">Nueva sesión</h1>
+    <label>¿Quién tira?</label><div class="opts" id="op-modo"></div>
+
+    <div id="group-box" class="hidden">
+      <label for="f-name">Compañeros</label>
+      <div class="addrow">
+        <input type="text" id="f-name" placeholder="Nombre" autocomplete="off">
+        <button id="add-name">Agregar</button>
+      </div>
+      <div class="people" id="people"></div>
+      <div id="sug-box" class="hidden">
+        <p class="suggest">Habituales</p>
+        <div class="people" id="sug"></div>
+      </div>
+    </div>
+
+    <label>Distancia</label><div class="opts" id="op-dist"></div>
+    <label>Flechas por serie</label><div class="opts" id="op-per"></div>
+    <label>Series previstas</label><div class="opts" id="op-ends"></div>
+    <label for="f-place">Lugar (opcional)</label>
+    <input type="text" id="f-place" placeholder="Club, campo, bajo techo…">
+    <button class="primary" id="start" style="margin-top:24px">Tirar</button>
+  </div>
+</section>
+
+<section id="v-shoot" class="hidden">
+  <button class="back" id="shoot-back">← Guardar y salir</button>
+  <div class="wrap">
+    <div class="tabs hidden" id="tabs"></div>
+    <div class="live">
+      <div class="who hidden" id="l-who"></div>
+      <div class="row">
+        <div class="total"><span id="l-total">0</span> <small id="l-max"></small></div>
+        <div class="side">
+          <div>promedio <b id="l-avg">—</b></div>
+          <div id="l-x">X+10: 0</div>
+        </div>
+      </div>
+      <div class="ends" id="l-ends"></div>
+    </div>
+    <div class="pad" id="pad"></div>
+    <div class="pad-foot">
+      <button id="undo">Borrar última</button>
+      <button class="fin" id="finish">Terminar</button>
+    </div>
+  </div>
+</section>
+
+<section id="v-auth" class="hidden">
+  <button class="back" id="auth-back">← Volver</button>
+  <div class="wrap">
+    <h1 style="font-size:25px">Cuenta del club</h1>
+    <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+      Con cuenta, tus sesiones se copian al servidor del club y las recuperás en
+      cualquier teléfono. Sin cuenta la app funciona igual, solo que local.</p>
+    <label for="a-mail">Mail</label>
+    <input type="text" id="a-mail" placeholder="vos@mail.com" autocomplete="username"
+           inputmode="email" autocapitalize="none" spellcheck="false">
+    <label for="a-pass">Contraseña</label>
+    <input type="password" id="a-pass" placeholder="mínimo 6 caracteres" autocomplete="current-password">
+    <div id="a-namebox" class="hidden">
+      <label for="a-nombre">Tu nombre, como te ven en el club</label>
+      <input type="text" id="a-nombre" placeholder="Nombre y apellido">
+    </div>
+    <button class="primary" id="a-in" style="margin-top:24px">Entrar</button>
+    <button class="ghost" id="a-up">No tengo cuenta, crear una</button>
+  </div>
+</section>
+
+<section id="v-club" class="hidden">
+  <button class="back" id="club-back">← Volver</button>
+  <div class="wrap" id="club-body"></div>
+</section>
+
+<section id="v-detail" class="hidden">
+  <button class="back" id="det-back">← Volver</button>
+  <div class="wrap" id="det-body"></div>
+</section>
+
+<div class="sheet hidden" id="sheet">
+  <div class="sheet-inner">
+    <h3 id="sh-title"></h3>
+    <p id="sh-text"></p>
+    <textarea id="sh-input" class="hidden" placeholder="Sensaciones, material, viento…"></textarea>
+    <div class="row2" style="margin-top:12px">
+      <button id="sh-no">Cancelar</button>
+      <button class="ok" id="sh-yes">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY_S = "arqueria.sesiones";
+const KEY_C = "arqueria.encurso";
+const KEY_B = "arqueria.ultimorespaldo";
+const KEY_P = "arqueria.companeros";
+const KEY_T = "arqueria.sesion_cuenta";
+const KEY_D = "arqueria.borradas";
+const KEY_L = "arqueria.ultima_sync";
+const SUPA = "https://dokvbdcyaeckxmdwvlgs.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRva3ZiZGN5YWVja3htZHd2bGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NzI4MzAsImV4cCI6MjEwNDM0ODgzMH0.ytWACzkSeVz5hIBrz44sRASsr2De8KQSj7EzWNZO69Q";
+const uid = () => (crypto.randomUUID ? crypto.randomUUID()
+  : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+      const r = Math.random()*16|0; return (c === "x" ? r : (r&0x3|0x8)).toString(16); }));
+const CODES = [["X","g"],["10","g"],["9","g"],["8","r"],["7","r"],["6","b"],
+               ["5","b"],["4","k"],["3","k"],["2","w"],["1","w"],["M","m"]];
+const cls = c => (CODES.find(k => k[0] === c) || ["","m"])[1];
+const val = c => c === "X" ? 10 : c === "M" ? 0 : +c;
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+
+let sessions = [], cur = null, deferredPrompt = null;
+
+/* ---------- almacenamiento: IndexedDB con espejo en localStorage ---------- */
+let db = null;
+const cache = {};
+function openDB(){
+  return new Promise(res => {
+    let r;
+    try { r = indexedDB.open("arqueria", 1); } catch { return res(null); }
+    r.onupgradeneeded = () => { try { r.result.createObjectStore("kv"); } catch {} };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => res(null);
+    setTimeout(() => res(r.result || null), 2500);
+  });
+}
+function idbGet(key){
+  return new Promise(res => {
+    if(!db) return res(undefined);
+    try{
+      const rq = db.transaction("kv","readonly").objectStore("kv").get(key);
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => res(undefined);
+    } catch { res(undefined); }
+  });
+}
+function idbSet(key,v){ try{ db && db.transaction("kv","readwrite").objectStore("kv").put(v,key); }catch{} }
+function idbDel(key){ try{ db && db.transaction("kv","readwrite").objectStore("kv").delete(key); }catch{} }
+
+function load(key){ return cache[key] || null; }
+function save(key, data){
+  cache[key] = data;
+  idbSet(key, data);
+  try { localStorage.setItem(key, JSON.stringify(data)); }
+  catch { toast("El navegador no deja guardar. Exportá un respaldo ya."); }
+}
+function wipe(key){ cache[key] = null; idbDel(key); try{ localStorage.removeItem(key); }catch{} }
+async function hydrate(key){
+  const a = await idbGet(key);
+  let b = null;
+  try { b = JSON.parse(localStorage.getItem(key)); } catch {}
+  const size = v => Array.isArray(v) ? v.length : (v ? 1 : 0);
+  const win = size(a) >= size(b) ? a : b;
+  cache[key] = win || null;
+  if(win) save(key, win);
+  return cache[key];
+}
+async function checkDurability(){
+  try { if(!await navigator.storage.persisted()) await navigator.storage.persist(); } catch {}
+  const installed = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  $("warn").classList.toggle("hidden", installed);
+}
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2000);
+}
+function ask({title, text = "", input = false, value = "", ok = "Aceptar"}){
+  return new Promise(res => {
+    $("sh-title").textContent = title;
+    $("sh-text").textContent = text;
+    $("sh-text").classList.toggle("hidden", !text);
+    const inp = $("sh-input");
+    inp.classList.toggle("hidden", !input);
+    inp.value = value || "";
+    $("sh-yes").textContent = ok;
+    $("sheet").classList.remove("hidden");
+    const done = v => { $("sheet").classList.add("hidden"); res(v); };
+    $("sh-yes").onclick = () => done(input ? inp.value : true);
+    $("sh-no").onclick  = () => done(null);
+  });
+}
+
+/* ---------- modelo ----------
+   sesión = { id, date, dist, per, endsPlan, place, note, active,
+              archers:[ {id, name, me?, ends:[[...]]} ] }
+   las sesiones de la versión anterior traen ends en la raíz y se leen igual */
+const archersOf = s => s.archers || [{id:"me", name:"Yo", me:true, ends:s.ends || []}];
+const mine = s => archersOf(s).find(a => a.me) || archersOf(s)[0];
+const flat = a => a.ends.flat();
+const totalOf = a => flat(a).reduce((t,c) => t + val(c), 0);
+const avgOf = a => { const f = flat(a); return f.length ? totalOf(a)/f.length : 0; };
+const xCount = a => flat(a).filter(c => c === "X" || c === "10").length;
+const shots = s => archersOf(s).reduce((t,a) => t + flat(a).length, 0);
+const fmtDate = iso => new Date(iso).toLocaleDateString("es",{day:"2-digit",month:"short"}).replace(".","");
+
+function show(v){
+  ["home","new","shoot","detail","auth","club"].forEach(n => $("v-"+n).classList.toggle("hidden", n !== v));
+  window.scrollTo(0,0);
+}
+
+/* ---------- inicio ---------- */
+function renderHome(){
+  const done = sessions.filter(s => shots(s));
+  const mias = done.filter(s => flat(mine(s)).length);
+  $("s-sess").textContent = done.length;
+  $("s-arrows").textContent = done.reduce((t,s) => t + flat(mine(s)).length, 0);
+  $("s-best").textContent = mias.length ? Math.max(...mias.map(s => avgOf(mine(s)))).toFixed(1) : "—";
+
+  const list = $("list");
+  if(!done.length){
+    list.innerHTML = '<div class="empty">Todavía no hay sesiones.<br>Cargá la primera y el promedio empieza a contar.</div>';
+  } else {
+    list.innerHTML = "";
+    done.slice().reverse().forEach(s => {
+      const yo = mine(s), otros = archersOf(s).length - 1;
+      const b = document.createElement("button");
+      b.className = "sess";
+      b.innerHTML = `<span class="d">${fmtDate(s.date)}</span>
+        <span class="m"><b>${s.dist} m · ${totalOf(yo)} pts</b>${flat(yo).length} flechas${
+          otros > 0 ? ` · con ${otros} más` : ""}${s.place ? " · " + esc(s.place) : ""}</span>
+        <span class="avg">${avgOf(yo).toFixed(1)}</span>`;
+      b.onclick = () => renderDetail(s.id);
+      list.appendChild(b);
+    });
+  }
+  renderChart(mias);
+}
+
+function renderChart(mias){
+  const box = $("chart-box");
+  if(mias.length < 2){ box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  const pts = mias.slice(-12).map(s => avgOf(mine(s)));
+  $("chart-range").textContent = `últimas ${pts.length} sesiones`;
+  const W = 320, H = 120, pad = 14;
+  const lo = Math.min(...pts) - .6, hi = Math.max(...pts) + .6;
+  const x = i => pad + i * (W - pad*2) / Math.max(1, pts.length - 1);
+  const y = v => H - pad - (v - lo) / (hi - lo || 1) * (H - pad*2);
+  const line = pts.map((v,i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(pts.length-1).toFixed(1)},${H-pad} L${x(0).toFixed(1)},${H-pad} Z`;
+  const dots = pts.map((v,i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2" fill="#F2C230"/>`).join("");
+  $("chart").innerHTML = `<path d="${area}" fill="rgba(242,194,48,.12)"/>
+    <path d="${line}" fill="none" stroke="#F2C230" stroke-width="2" stroke-linejoin="round"/>${dots}
+    <text x="${W-2}" y="12" fill="#93A09A" font-size="11" text-anchor="end">${hi.toFixed(1)}</text>
+    <text x="${W-2}" y="${H-3}" fill="#93A09A" font-size="11" text-anchor="end">${lo.toFixed(1)}</text>`;
+}
+
+/* ---------- nueva sesión ---------- */
+const form = { modo:"Solo yo", dist:18, per:6, ends:10, place:"", nombres:[] };
+
+function chips(host, values, field, suffix=""){
+  const el = $(host); el.innerHTML = "";
+  values.forEach(v => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = v + suffix;
+    b.setAttribute("aria-pressed", form[field] === v);
+    b.onclick = () => {
+      form[field] = v;
+      chips(host, values, field, suffix);
+      if(field === "modo") $("group-box").classList.toggle("hidden", v !== "Grupo");
+    };
+    el.appendChild(b);
+  });
+}
+function renderPeople(){
+  const el = $("people");
+  el.innerHTML = '<span class="person fixed">Yo</span>';
+  form.nombres.forEach((n,i) => {
+    const s = document.createElement("span");
+    s.className = "person";
+    s.innerHTML = `${esc(n)} <i>×</i>`;
+    s.querySelector("i").onclick = () => { form.nombres.splice(i,1); renderPeople(); };
+    el.appendChild(s);
+  });
+  const habituales = (load(KEY_P) || []).filter(n => !form.nombres.includes(n)).slice(0,8);
+  $("sug-box").classList.toggle("hidden", !habituales.length);
+  const sug = $("sug"); sug.innerHTML = "";
+  habituales.forEach(n => {
+    const b = document.createElement("button");
+    b.className = "person fixed"; b.textContent = "+ " + n;
+    b.onclick = () => addName(n);
+    sug.appendChild(b);
+  });
+}
+function addName(n){
+  n = (n || "").trim();
+  if(!n) return;
+  if(form.nombres.some(x => x.toLowerCase() === n.toLowerCase())) return toast("Ya está en la lista");
+  if(form.nombres.length >= 7) return toast("Máximo 8 arqueros por sesión");
+  form.nombres.push(n);
+  renderPeople();
+}
+function renderNew(){
+  chips("op-modo",["Solo yo","Grupo"],"modo");
+  chips("op-dist",[18,30,50,70],"dist"," m");
+  chips("op-per",[3,6],"per");
+  chips("op-ends",[6,10,12,20],"ends");
+  $("group-box").classList.toggle("hidden", form.modo !== "Grupo");
+  $("f-place").value = form.place;
+  $("f-name").value = "";
+  renderPeople();
+  show("new");
+}
+$("add-name").onclick = () => { addName($("f-name").value); $("f-name").value = ""; $("f-name").focus(); };
+$("f-name").onkeydown = e => { if(e.key === "Enter"){ e.preventDefault(); $("add-name").click(); } };
+
+/* ---------- tirada ---------- */
+const active = () => cur.archers[cur.active];
+
+function renderTabs(){
+  const tabs = $("tabs");
+  tabs.classList.toggle("hidden", cur.archers.length < 2);
+  if(cur.archers.length < 2) return;
+  tabs.innerHTML = "";
+  cur.archers.forEach((a,i) => {
+    const b = document.createElement("button");
+    b.className = "tab";
+    b.setAttribute("aria-pressed", i === cur.active);
+    b.innerHTML = `<b>${esc(a.name)}</b><span>${totalOf(a)}</span>`;
+    b.onclick = () => { cur.active = i; renderShoot(); };
+    tabs.appendChild(b);
+  });
+}
+function renderShoot(){
+  const a = active(), t = totalOf(a), f = flat(a);
+  renderTabs();
+  const grupo = cur.archers.length > 1;
+  $("l-who").classList.toggle("hidden", !grupo);
+  $("l-who").textContent = "Cargando: " + a.name;
+  $("l-total").textContent = t;
+  $("l-max").textContent = `de ${f.length * 10 || 0}`;
+  $("l-avg").textContent = f.length ? (t/f.length).toFixed(2) : "—";
+  $("l-x").textContent = `X+10: ${xCount(a)} · serie ${Math.min(a.ends.length || 1, cur.endsPlan)}/${cur.endsPlan}`;
+
+  const host = $("l-ends"); host.innerHTML = "";
+  let run = 0;
+  a.ends.forEach((end,i) => {
+    const sum = end.reduce((x,c) => x + val(c), 0); run += sum;
+    const row = document.createElement("div");
+    row.className = "end";
+    row.innerHTML = `<span class="n">${i+1}</span>` +
+      end.map(c => `<span class="chip ${cls(c)}">${c}</span>`).join("") +
+      `<span class="t">${sum}<i>${run}</i></span>`;
+    host.appendChild(row);
+  });
+  host.scrollTop = host.scrollHeight;
+  save(KEY_C, cur);
+}
+function addArrow(code){
+  const a = active();
+  let last = a.ends[a.ends.length - 1];
+  if(!last || last.length >= cur.per){ last = []; a.ends.push(last); }
+  last.push(code);
+  if(navigator.vibrate) navigator.vibrate(8);
+  if(last.length >= cur.per && cur.archers.length > 1){
+    cur.active = (cur.active + 1) % cur.archers.length;   // pasa al siguiente arquero
+  }
+  renderShoot();
+}
+function undo(){
+  const a = active();
+  const last = a.ends[a.ends.length - 1];
+  if(!last || !last.length){
+    if(cur.archers.length > 1){        // volvé al anterior si el activo está vacío
+      cur.active = (cur.active - 1 + cur.archers.length) % cur.archers.length;
+      return renderShoot();
+    }
+    return;
+  }
+  last.pop();
+  if(!last.length) a.ends.pop();
+  renderShoot();
+}
+function buildPad(){
+  const pad = $("pad");
+  CODES.forEach(([c,k]) => {
+    const b = document.createElement("button");
+    b.className = "key " + k; b.textContent = c;
+    b.onclick = () => addArrow(c);
+    pad.appendChild(b);
+  });
+}
+async function finish(exit){
+  if(!shots(cur)){ cur = null; wipe(KEY_C); renderHome(); show("home"); return; }
+  if(!exit){
+    const note = await ask({title:"Terminar sesión", text:"Podés dejar una nota.", input:true, value:cur.note, ok:"Guardar"});
+    if(note === null) return;
+    cur.note = note;
+  }
+  cur.actualizado = new Date().toISOString();
+  cur.sincronizada = false;
+  const i = sessions.findIndex(s => s.id === cur.id);
+  if(i < 0) sessions.push(cur); else sessions[i] = cur;
+  save(KEY_S, sessions); wipe(KEY_C);
+  syncNow(true);
+
+  const prev = load(KEY_P) || [];
+  const nuevos = cur.archers.filter(a => !a.me).map(a => a.name);
+  save(KEY_P, [...new Set([...nuevos, ...prev])].slice(0,20));
+
+  const puntos = totalOf(mine(cur));
+  cur = null;
+  $("go-resume").classList.add("hidden");
+  toast(`Guardado · ${puntos} pts`);
+  renderHome(); show("home");
+
+  const pend = sessions.length - (load(KEY_B) || 0);
+  if(pend >= 3){
+    if(await ask({title:"Hacé un respaldo",
+      text:`Van ${pend} sesiones desde el último. Bajá el archivo y mandalo a Drive o a tu mail.`,
+      ok:"Descargar"})) exportJson();
+  }
+}
+
+/* ---------- detalle ---------- */
+function renderDetail(id){
+  const s = sessions.find(x => x.id === id); if(!s) return;
+  const arqs = archersOf(s);
+  const bloques = arqs.map(a => {
+    let run = 0;
+    const rows = a.ends.map((end,i) => {
+      const sum = end.reduce((t,c) => t + val(c), 0); run += sum;
+      return `<div class="end"><span class="n">${i+1}</span>` +
+        end.map(c => `<span class="chip ${cls(c)}">${c}</span>`).join("") +
+        `<span class="t">${sum}<i>${run}</i></span></div>`;
+    }).join("");
+    return `<div class="arq-head"><h3>${esc(a.name)}</h3><span>${totalOf(a)} pts</span></div>
+      <p style="color:var(--muted);margin:0 0 6px;font-size:15px">
+        ${avgOf(a).toFixed(2)} por flecha · ${xCount(a)} X+10 · ${flat(a).length} flechas</p>${rows}`;
+  }).join("");
+
+  const yo = mine(s);
+  $("det-body").innerHTML = `
+    <h1 style="font-size:25px">${new Date(s.date).toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}</h1>
+    <p style="color:var(--muted);margin:4px 0 16px">${s.dist} m · ${s.per} flechas por serie${
+      arqs.length > 1 ? ` · ${arqs.length} arqueros` : ""}${s.place ? " · " + esc(s.place) : ""}</p>
+    <div class="summary">
+      <div><b>${totalOf(yo)}</b><small>mis puntos</small></div>
+      <div><b>${avgOf(yo).toFixed(2)}</b><small>por flecha</small></div>
+      <div><b>${xCount(yo)}</b><small>X + 10</small></div>
+    </div>
+    ${bloques}
+    ${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
+    <button class="danger" id="del">Borrar esta sesión</button>`;
+  $("del").onclick = async () => {
+    if(!await ask({title:"¿Borrar la sesión?", text:"No se puede deshacer.", ok:"Borrar"})) return;
+    const era = sessions.find(x => x.id === id);
+    sessions = sessions.filter(x => x.id !== id);
+    save(KEY_S, sessions);
+    if(era && era.sincronizada) save(KEY_D, [...(load(KEY_D) || []), id]);
+    syncNow(true);
+    toast("Sesión borrada");
+    renderHome(); show("home");
+  };
+  show("detail");
+}
+
+/* ---------- respaldo ---------- */
+function download(name, text, type){
+  const url = URL.createObjectURL(new Blob([text], {type}));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+const stamp = () => new Date().toISOString().slice(0,10);
+function exportJson(){
+  if(!sessions.length) return toast("Todavía no hay nada para respaldar");
+  download(`arqueria-respaldo-${stamp()}.json`, JSON.stringify({v:2, sessions}, null, 1), "application/json");
+  save(KEY_B, sessions.length);
+  toast("Respaldo descargado");
+}
+$("exp-json").onclick = exportJson;
+$("exp-csv").onclick = () => {
+  if(!sessions.length) return toast("Todavía no hay nada para exportar");
+  const rows = [["fecha","distancia","lugar","arquero","serie","flecha","valor","puntos","nota"]];
+  sessions.forEach(s => archersOf(s).forEach(a => a.ends.forEach((end,i) => end.forEach((c,j) =>
+    rows.push([s.date.slice(0,10), s.dist, s.place || "", a.name, i+1, j+1, c, val(c),
+               (s.note || "").replace(/[\r\n;]/g," ")])))));
+  download(`arqueria-${stamp()}.csv`, rows.map(r => r.join(";")).join("\n"), "text/csv;charset=utf-8");
+  toast("CSV descargado");
+};
+$("imp").onclick = () => $("file").click();
+$("file").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const data = JSON.parse(await f.text());
+    const inc = data.sessions || data;
+    if(!Array.isArray(inc)) throw 0;
+    const ids = new Set(sessions.map(s => s.id));
+    const nuevas = inc.filter(s => s && (s.ends || s.archers) && !ids.has(s.id));
+    sessions = sessions.concat(nuevas).sort((a,b) => new Date(a.date) - new Date(b.date));
+    nuevas.forEach(x => { x.sincronizada = false; x.actualizado = x.actualizado || new Date().toISOString(); });
+    save(KEY_S, sessions); renderHome(); syncNow(true);
+    toast(nuevas.length ? `${nuevas.length} sesiones restauradas` : "Ya estaban todas cargadas");
+  } catch { toast("El archivo no es un respaldo válido"); }
+  e.target.value = "";
+};
+
+
+/* ================= cuenta y sincronización ================= */
+let auth = null;          // {access_token, refresh_token, expires_at, user:{id,email}, nombre}
+let syncing = false;
+
+function authHeaders(extra){
+  return Object.assign({
+    "apikey": ANON,
+    "Authorization": "Bearer " + (auth ? auth.access_token : ANON),
+    "Content-Type": "application/json"
+  }, extra || {});
+}
+async function api(path, opts, reintento){
+  const r = await fetch(SUPA + path, Object.assign({}, opts, {headers: authHeaders(opts && opts.headers)}));
+  if(r.status === 401 && auth && !reintento && await refrescar()) return api(path, opts, true);
+  if(!r.ok) throw new Error((await r.text()).slice(0,200) || r.status);
+  const txt = await r.text();
+  return txt ? JSON.parse(txt) : null;
+}
+async function refrescar(){
+  try{
+    const r = await fetch(SUPA + "/auth/v1/token?grant_type=refresh_token", {
+      method:"POST", headers:{apikey:ANON,"Content-Type":"application/json"},
+      body: JSON.stringify({refresh_token: auth.refresh_token})});
+    if(!r.ok) return false;
+    guardarSesion(await r.json());
+    return true;
+  } catch { return false; }
+}
+function guardarSesion(d){
+  if(!d || !d.access_token) return;
+  auth = Object.assign({}, auth, {
+    access_token: d.access_token,
+    refresh_token: d.refresh_token || (auth && auth.refresh_token),
+    user: d.user || (auth && auth.user)
+  });
+  save(KEY_T, auth);
+}
+
+/* --- alta e ingreso --- */
+async function ingresar(mail, pass){
+  const r = await fetch(SUPA + "/auth/v1/token?grant_type=password", {
+    method:"POST", headers:{apikey:ANON,"Content-Type":"application/json"},
+    body: JSON.stringify({email:mail, password:pass})});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error_description || d.msg || "No se pudo entrar");
+  guardarSesion(d);
+  await asegurarPerfil();
+}
+async function registrar(mail, pass, nombre){
+  const r = await fetch(SUPA + "/auth/v1/signup", {
+    method:"POST", headers:{apikey:ANON,"Content-Type":"application/json"},
+    body: JSON.stringify({email:mail, password:pass, data:{nombre}})});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error_description || d.msg || "No se pudo crear la cuenta");
+  if(!d.access_token) return false;      // falta confirmar el mail
+  guardarSesion(d);
+  await asegurarPerfil(nombre);
+  return true;
+}
+async function asegurarPerfil(nombre){
+  const id = auth.user.id;
+  const p = await api("/rest/v1/profiles?select=id,nombre,rol&id=eq." + id);
+  if(p && p.length){ auth.nombre = p[0].nombre; auth.rol = p[0].rol; }
+  else {
+    const n = nombre || (auth.user.email || "").split("@")[0];
+    await api("/rest/v1/profiles", {method:"POST", headers:{Prefer:"return=minimal"},
+      body: JSON.stringify({id, nombre:n})});
+    auth.nombre = n;
+  }
+  save(KEY_T, auth);
+}
+function salir(){
+  auth = null; club = null; socios = []; wipe(KEY_T);
+  $("go-club").classList.add("hidden");
+  $("top-club").textContent = "recurvo";
+  renderAcct(); toast("Sesión cerrada. Los datos siguen en el teléfono.");
+}
+
+/* --- subir y bajar --- */
+function aFila(s){
+  return { id:s.id, owner:auth.user.id, fecha:s.date, distancia:s.dist,
+           flechas_serie:s.per, series_previstas:s.endsPlan || null,
+           lugar:s.place || null, nota:s.note || null,
+           actualizado:s.actualizado || new Date().toISOString() };
+}
+function deFila(f){
+  const arqs = (f.session_archers || []).map(a => ({
+    id:a.id, name:a.nombre, me:a.profile_id === auth.user.id, ends:a.ends || []}));
+  if(!arqs.some(a => a.me) && arqs.length) arqs[0].me = true;
+  return { id:f.id, date:f.fecha, dist:f.distancia, per:f.flechas_serie,
+           endsPlan:f.series_previstas, place:f.lugar || "", note:f.nota || "",
+           actualizado:f.actualizado, archers:arqs, sincronizada:true };
+}
+const pendientes = () => sessions.filter(s => !s.sincronizada).length + (load(KEY_D) || []).length;
+
+async function syncNow(silencioso){
+  if(!auth || syncing) return;
+  if(!navigator.onLine){ if(!silencioso) toast("Sin conexión. Se sube cuando vuelva."); return renderAcct(); }
+  syncing = true; renderAcct();
+  try{
+    // 1. borradas
+    const borradas = load(KEY_D) || [];
+    for(const id of borradas.slice()){
+      try{ await api("/rest/v1/sessions?id=eq." + id, {method:"DELETE"}); } catch {}
+      borradas.splice(borradas.indexOf(id), 1);
+    }
+    save(KEY_D, borradas);
+
+    // 2. subir lo que falta
+    for(const s of sessions.filter(x => !x.sincronizada)){
+      await api("/rest/v1/sessions?on_conflict=id", {method:"POST",
+        headers:{Prefer:"resolution=merge-duplicates,return=minimal"},
+        body: JSON.stringify(aFila(s))});
+      await api("/rest/v1/session_archers?session_id=eq." + s.id, {method:"DELETE"});
+      const filas = archersOf(s).map(a => ({
+        session_id:s.id, profile_id: a.me ? auth.user.id : null,
+        nombre: a.me ? (auth.nombre || "Yo") : a.name, ends:a.ends}));
+      if(filas.length) await api("/rest/v1/session_archers", {method:"POST",
+        headers:{Prefer:"return=minimal"}, body: JSON.stringify(filas)});
+      s.sincronizada = true;
+    }
+
+    // 3. bajar lo que no tengo
+    const remotas = await api("/rest/v1/sessions?select=*,session_archers(*)&order=fecha.desc&limit=500");
+    let nuevas = 0;
+    (remotas || []).forEach(f => {
+      const local = sessions.find(x => x.id === f.id);
+      const r = deFila(f);
+      if(!local){ sessions.push(r); nuevas++; }
+      else if(new Date(f.actualizado) > new Date(local.actualizado || 0)){
+        Object.assign(local, r);
+      }
+    });
+    sessions.sort((a,b) => new Date(a.date) - new Date(b.date));
+    save(KEY_S, sessions);
+    save(KEY_L, new Date().toISOString());
+    if(!silencioso) toast(nuevas ? `Sincronizado · ${nuevas} sesiones bajadas` : "Todo sincronizado");
+    renderHome();
+  } catch(e){
+    if(!silencioso) toast("No se pudo sincronizar: " + (e.message || "").slice(0,60));
+  } finally { syncing = false; renderAcct(); }
+}
+
+/* --- barra de cuenta --- */
+function renderAcct(){
+  const el = $("acct");
+  if(!auth){
+    el.innerHTML = `<span class="st">Solo en este teléfono</span>
+      <button id="ac-in">Entrar al club</button>`;
+    $("ac-in").onclick = () => { $("a-namebox").classList.add("hidden"); show("auth"); };
+    return;
+  }
+  const pend = pendientes();
+  const last = load(KEY_L);
+  const clase = syncing ? "" : (!navigator.onLine ? "off" : pend ? "pend" : "ok");
+  const txt = syncing ? "Sincronizando…"
+    : !navigator.onLine ? "Sin conexión"
+    : pend ? `${pend} sin subir`
+    : last ? "Al día · " + new Date(last).toLocaleString("es",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})
+    : "Sin sincronizar aún";
+  el.innerHTML = `<span class="st"><b>${esc(auth.nombre || auth.user.email)}</b>
+      <span class="dot ${clase}"></span>${txt}</span>
+    <button class="sy" id="ac-sy">Sincronizar</button>
+    <button id="ac-out">Salir</button>`;
+  $("ac-sy").onclick = () => syncNow(false);
+  $("ac-out").onclick = salir;
+}
+
+
+/* ================= club y socios ================= */
+let club = null, socios = [];
+const rpc = (fn, args) => api("/rest/v1/rpc/" + fn, {method:"POST", body: JSON.stringify(args || {})});
+const ROLES = ["arquero","anotador","entrenador","admin"];
+const soyAdmin = () => auth && ["admin","superadmin"].includes(auth.rol);
+
+async function cargarClub(){
+  if(!auth) return;
+  try{
+    const info = await rpc("mi_club_info");
+    club = (info && info[0]) || null;
+    socios = club || auth.rol === "superadmin" ? (await rpc("socios_del_club")) || [] : [];
+    const yo = socios.find(x => x.id === auth.user.id);
+    if(yo && yo.rol !== auth.rol){ auth.rol = yo.rol; save(KEY_T, auth); }
+    $("top-club").textContent = club ? club.nombre : "recurvo";
+  } catch(e){ club = null; socios = []; }
+  $("go-club").classList.toggle("hidden", !auth);
+}
+
+function renderClub(){
+  const b = $("club-body");
+  if(!club && auth.rol !== "superadmin"){
+    b.innerHTML = `
+      <h1 style="font-size:25px">Mi club</h1>
+      <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+        Todavía no estás en ningún club. Sumate con el código que te pasaron, o creá uno nuevo.</p>
+      <label for="c-cod">Código de invitación</label>
+      <input type="text" id="c-cod" placeholder="TAPURU" autocapitalize="characters" autocomplete="off">
+      <button class="primary" id="c-join" style="margin-top:16px">Sumarme al club</button>
+      <label for="c-nom" style="margin-top:30px">O creá uno nuevo</label>
+      <input type="text" id="c-nom" placeholder="Nombre del club">
+      <input type="text" id="c-newcod" placeholder="Código para invitar" style="margin-top:8px"
+             autocapitalize="characters" autocomplete="off">
+      <button class="ghost" id="c-new" style="margin-top:12px">Crear el club</button>`;
+    $("c-join").onclick = async () => {
+      try{ await rpc("unirme_a_club", {codigo: $("c-cod").value.trim()});
+           await cargarClub(); renderClub(); toast("Ya sos parte del club"); }
+      catch(e){ toast(msgErr(e)); }
+    };
+    $("c-new").onclick = async () => {
+      try{ await rpc("crear_club", {p_nombre:$("c-nom").value.trim(), p_codigo:$("c-newcod").value.trim()});
+           auth.rol = "admin"; save(KEY_T, auth);
+           await cargarClub(); renderClub(); toast("Club creado"); }
+      catch(e){ toast(msgErr(e)); }
+    };
+    return show("club");
+  }
+
+  const admin = soyAdmin();
+  const lista = socios.map(p => {
+    const yo = p.id === auth.user.id;
+    const chips = admin && !yo ? `<div class="roles">` +
+        ROLES.map(r => `<button class="rol" data-id="${p.id}" data-rol="${r}"
+           aria-pressed="${p.rol === r}">${r}</button>`).join("") +
+        `<button class="rol out" data-out="${p.id}">Sacar</button></div>` : "";
+    return `<div class="socio">
+      <div class="l1"><b>${esc(p.nombre)}</b><em>${esc(p.rol)}</em></div>
+      <div class="l2">${esc(p.mail)} · ${p.sesiones} sesiones</div>${chips}</div>`;
+  }).join("");
+
+  b.innerHTML = `
+    <h1 style="font-size:25px">${club ? esc(club.nombre) : "Todos los clubes"}</h1>
+    ${club ? `<div class="codigo"><small>Código de invitación</small><b>${esc(club.codigo || "—")}</b>
+      <small>${club.socios} socios · pasáselo a quien quieras sumar</small></div>` : ""}
+    ${admin ? `<p style="color:var(--muted);font-size:15px;margin:14px 0 0">
+      Tocá un rol para cambiarlo. El entrenador ve las estadísticas de todos; el anotador puede
+      cargar sesiones grupales; el arquero solo lo suyo.</p>` : ""}
+    <div class="chart-head"><h2>Socios</h2></div>
+    ${lista || '<div class="empty">Todavía no hay nadie más.</div>'}`;
+
+  b.querySelectorAll(".rol[data-rol]").forEach(el => el.onclick = async () => {
+    try{ await rpc("set_rol", {p_id: el.dataset.id, p_rol: el.dataset.rol});
+         await cargarClub(); renderClub(); toast("Rol actualizado"); }
+    catch(e){ toast(msgErr(e)); }
+  });
+  b.querySelectorAll(".rol[data-out]").forEach(el => el.onclick = async () => {
+    if(!await ask({title:"¿Sacarlo del club?", text:"Sus datos no se borran, solo deja de pertenecer.", ok:"Sacar"})) return;
+    try{ await rpc("sacar_del_club", {p_id: el.dataset.out});
+         await cargarClub(); renderClub(); toast("Listo"); }
+    catch(e){ toast(msgErr(e)); }
+  });
+  show("club");
+}
+function msgErr(e){
+  const t = (e && e.message) || "";
+  const m = t.match(/"message":"([^"]+)"/);
+  return m ? m[1] : (t.slice(0,70) || "No se pudo");
+}
+$("club-back").onclick = () => show("home");
+$("go-club").onclick = () => { cargarClub().then(renderClub); };
+
+/* --- pantalla de cuenta --- */
+$("auth-back").onclick = () => show("home");
+$("a-up").onclick = async () => {
+  const box = $("a-namebox");
+  if(box.classList.contains("hidden")){
+    box.classList.remove("hidden");
+    $("a-up").textContent = "Crear la cuenta";
+    $("a-in").textContent = "Ya tengo cuenta, entrar";
+    return;
+  }
+  const mail = $("a-mail").value.trim(), pass = $("a-pass").value, nom = $("a-nombre").value.trim();
+  if(!mail || pass.length < 6) return toast("Mail y contraseña de 6 o más caracteres");
+  if(!nom) return toast("Falta tu nombre");
+  try{
+    const listo = await registrar(mail, pass, nom);
+    if(!listo) return toast("Te mandamos un mail para confirmar. Confirmá y entrá.");
+    toast("Cuenta creada");
+    renderAcct(); show("home"); syncNow(false); cargarClub();
+  } catch(e){ toast(e.message); }
+};
+$("a-in").onclick = async () => {
+  if(!$("a-namebox").classList.contains("hidden")){   // volver a modo ingreso
+    $("a-namebox").classList.add("hidden");
+    $("a-up").textContent = "No tengo cuenta, crear una";
+    $("a-in").textContent = "Entrar";
+    return;
+  }
+  const mail = $("a-mail").value.trim(), pass = $("a-pass").value;
+  if(!mail || !pass) return toast("Completá mail y contraseña");
+  try{
+    await ingresar(mail, pass);
+    toast("Hola de nuevo");
+    renderAcct(); show("home"); syncNow(false); cargarClub();
+  } catch(e){ toast(e.message); }
+};
+window.addEventListener("online",  () => { renderAcct(); syncNow(true); });
+window.addEventListener("offline", renderAcct);
+
+/* ---------- eventos ---------- */
+$("go-new").onclick = renderNew;
+$("new-back").onclick = () => show("home");
+$("det-back").onclick = () => show("home");
+$("shoot-back").onclick = () => finish(true);
+$("undo").onclick = undo;
+$("finish").onclick = () => finish(false);
+$("f-place").oninput = e => form.place = e.target.value.trim();
+$("start").onclick = () => {
+  const archers = [{id:"me", name:"Yo", me:true, ends:[]}];
+  if(form.modo === "Grupo") form.nombres.forEach((n,i) => archers.push({id:"a"+i, name:n, ends:[]}));
+  cur = { id:uid(), date:new Date().toISOString(), dist:form.dist, per:form.per,
+          endsPlan:form.ends, place:form.place, note:"", archers, active:0 };
+  renderShoot(); show("shoot");
+};
+$("go-resume").onclick = () => { renderShoot(); show("shoot"); };
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); deferredPrompt = e;
+  $("go-install").classList.remove("hidden");
+});
+$("go-install").onclick = async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $("go-install").classList.add("hidden");
+};
+
+/* ---------- arranque ---------- */
+(async function init(){
+  buildPad();
+  db = await openDB();
+  sessions = (await hydrate(KEY_S)) || [];
+  await hydrate(KEY_P);
+  const pending = await hydrate(KEY_C);
+  if(pending && (pending.archers || pending.ends)){
+    if(!pending.archers) pending.archers = [{id:"me", name:"Yo", me:true, ends:pending.ends || []}];
+    if(pending.active == null) pending.active = 0;
+    if(shots(pending)){
+      cur = pending;
+      const r = $("go-resume");
+      r.classList.remove("hidden");
+      r.textContent = `Retomar sesión de ${pending.dist} m (${shots(pending)} flechas)`;
+    }
+  }
+  auth = await hydrate(KEY_T);
+  await hydrate(KEY_D);
+  await hydrate(KEY_L);
+  renderHome();
+  renderAcct();
+  show("home");
+  checkDurability();
+  if(auth){ await refrescar(); await asegurarPerfil().catch(()=>{}); syncNow(true); cargarClub(); }
+})();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
