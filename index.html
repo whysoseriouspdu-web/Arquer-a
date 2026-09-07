@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Arquería">
+<meta name="apple-mobile-web-app-title" content="TAPURU">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -32,9 +32,10 @@
   .wrap{padding:0 16px}
   .hidden{display:none !important}
 
-  .top{display:flex;align-items:baseline;justify-content:space-between;padding:22px 16px 14px}
-  .top h1{font-size:27px}
+  .top{display:flex;align-items:center;gap:13px;padding:20px 16px 14px}
+  .top h1{font-size:24px;line-height:1.15}
   .top span{color:var(--muted);font-size:15px}
+  .logo{width:46px;height:auto;flex:0 0 auto}
 
   .warn{border-left:3px solid var(--red);background:var(--surface);border-radius:8px;
     padding:12px 14px;margin-bottom:16px;font-size:15.5px;color:var(--muted);line-height:1.45}
@@ -132,6 +133,18 @@
   .acct .sy{color:var(--gold);border-color:var(--gold)}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px}
   .dot.ok{background:#4FA96A} .dot.pend{background:var(--gold)} .dot.off{background:var(--red)}
+  .socio{border-bottom:1px solid var(--line);padding:13px 0}
+  .socio .l1{display:flex;align-items:baseline;gap:8px}
+  .socio .l1 b{font-size:17px;font-weight:600;flex:1}
+  .socio .l1 em{font-style:normal;color:var(--muted);font-size:14px}
+  .socio .l2{color:var(--muted);font-size:14px;margin-top:2px}
+  .roles{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .rol{border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:14.5px;color:var(--muted)}
+  .rol[aria-pressed="true"]{background:var(--gold);color:var(--slate);border-color:var(--gold);font-weight:700}
+  .rol.out{color:var(--red);margin-left:auto}
+  .codigo{background:var(--surface);border-radius:10px;padding:14px 16px;margin:14px 0 6px}
+  .codigo b{display:block;font-size:30px;letter-spacing:.14em;font-weight:700}
+  .codigo small{color:var(--muted);font-size:14px}
   .sheet{position:fixed;inset:0;background:rgba(10,13,12,.72);display:grid;place-items:end center;padding:16px;z-index:9}
   .sheet-inner{background:var(--surface);border-radius:14px;padding:18px;width:100%;max-width:528px}
   .sheet h3{font-size:20px;margin-bottom:6px}
@@ -151,7 +164,10 @@
 <body>
 
 <section id="v-home">
-  <div class="top"><h1>Registro de arquería</h1><span>recurvo</span></div>
+  <div class="top">
+    <img src="logo-club.png" alt="" class="logo">
+    <div style="flex:1"><h1>Registro de arquería</h1><span id="top-club">recurvo</span></div>
+  </div>
   <div class="wrap">
     <div class="warn hidden" id="warn">
       <b>Instalala antes de tirar.</b>
@@ -182,6 +198,10 @@
     </div>
     <p class="hint">Los datos se guardan en el teléfono. Hacé un respaldo cada tanto.</p>
     <div class="acct" id="acct"></div>
+    <button class="ghost hidden" id="go-club" style="margin-top:10px">Mi club</button>
+    <p class="hint" style="margin-top:18px">
+      versión <span id="ver"></span> · <button id="upd" style="color:var(--gold);text-decoration:underline">buscar actualización</button>
+    </p>
     <input type="file" id="file" accept="application/json,.json" class="hidden">
   </div>
 </section>
@@ -258,6 +278,11 @@
   </div>
 </section>
 
+<section id="v-club" class="hidden">
+  <button class="back" id="club-back">← Volver</button>
+  <div class="wrap" id="club-body"></div>
+</section>
+
 <section id="v-detail" class="hidden">
   <button class="back" id="det-back">← Volver</button>
   <div class="wrap" id="det-body"></div>
@@ -281,6 +306,7 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
+const VERSION = "5.0";
 const KEY_P = "arqueria.companeros";
 const KEY_T = "arqueria.sesion_cuenta";
 const KEY_D = "arqueria.borradas";
@@ -383,7 +409,7 @@ const shots = s => archersOf(s).reduce((t,a) => t + flat(a).length, 0);
 const fmtDate = iso => new Date(iso).toLocaleDateString("es",{day:"2-digit",month:"short"}).replace(".","");
 
 function show(v){
-  ["home","new","shoot","detail","auth"].forEach(n => $("v-"+n).classList.toggle("hidden", n !== v));
+  ["home","new","shoot","detail","auth","club"].forEach(n => $("v-"+n).classList.toggle("hidden", n !== v));
   window.scrollTo(0,0);
 }
 
@@ -747,8 +773,8 @@ async function registrar(mail, pass, nombre){
 }
 async function asegurarPerfil(nombre){
   const id = auth.user.id;
-  const p = await api("/rest/v1/profiles?select=id,nombre&id=eq." + id);
-  if(p && p.length){ auth.nombre = p[0].nombre; }
+  const p = await api("/rest/v1/profiles?select=id,nombre,rol&id=eq." + id);
+  if(p && p.length){ auth.nombre = p[0].nombre; auth.rol = p[0].rol; }
   else {
     const n = nombre || (auth.user.email || "").split("@")[0];
     await api("/rest/v1/profiles", {method:"POST", headers:{Prefer:"return=minimal"},
@@ -758,7 +784,9 @@ async function asegurarPerfil(nombre){
   save(KEY_T, auth);
 }
 function salir(){
-  auth = null; wipe(KEY_T);
+  auth = null; club = null; socios = []; wipe(KEY_T);
+  $("go-club").classList.add("hidden");
+  $("top-club").textContent = "recurvo";
   renderAcct(); toast("Sesión cerrada. Los datos siguen en el teléfono.");
 }
 
@@ -852,6 +880,98 @@ function renderAcct(){
   $("ac-out").onclick = salir;
 }
 
+
+/* ================= club y socios ================= */
+let club = null, socios = [];
+const rpc = (fn, args) => api("/rest/v1/rpc/" + fn, {method:"POST", body: JSON.stringify(args || {})});
+const ROLES = ["arquero","anotador","entrenador","admin"];
+const soyAdmin = () => auth && ["admin","superadmin"].includes(auth.rol);
+
+async function cargarClub(){
+  if(!auth) return;
+  try{
+    const info = await rpc("mi_club_info");
+    club = (info && info[0]) || null;
+    socios = club || auth.rol === "superadmin" ? (await rpc("socios_del_club")) || [] : [];
+    const yo = socios.find(x => x.id === auth.user.id);
+    if(yo && yo.rol !== auth.rol){ auth.rol = yo.rol; save(KEY_T, auth); }
+    $("top-club").textContent = club ? club.nombre : "recurvo";
+  } catch(e){ club = null; socios = []; }
+  $("go-club").classList.toggle("hidden", !auth);
+}
+
+function renderClub(){
+  const b = $("club-body");
+  if(!club && auth.rol !== "superadmin"){
+    b.innerHTML = `
+      <h1 style="font-size:25px">Mi club</h1>
+      <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+        Todavía no estás en ningún club. Sumate con el código que te pasaron, o creá uno nuevo.</p>
+      <label for="c-cod">Código de invitación</label>
+      <input type="text" id="c-cod" placeholder="TAPURU" autocapitalize="characters" autocomplete="off">
+      <button class="primary" id="c-join" style="margin-top:16px">Sumarme al club</button>
+      <label for="c-nom" style="margin-top:30px">O creá uno nuevo</label>
+      <input type="text" id="c-nom" placeholder="Nombre del club">
+      <input type="text" id="c-newcod" placeholder="Código para invitar" style="margin-top:8px"
+             autocapitalize="characters" autocomplete="off">
+      <button class="ghost" id="c-new" style="margin-top:12px">Crear el club</button>`;
+    $("c-join").onclick = async () => {
+      try{ await rpc("unirme_a_club", {codigo: $("c-cod").value.trim()});
+           await cargarClub(); renderClub(); toast("Ya sos parte del club"); }
+      catch(e){ toast(msgErr(e)); }
+    };
+    $("c-new").onclick = async () => {
+      try{ await rpc("crear_club", {p_nombre:$("c-nom").value.trim(), p_codigo:$("c-newcod").value.trim()});
+           auth.rol = "admin"; save(KEY_T, auth);
+           await cargarClub(); renderClub(); toast("Club creado"); }
+      catch(e){ toast(msgErr(e)); }
+    };
+    return show("club");
+  }
+
+  const admin = soyAdmin();
+  const lista = socios.map(p => {
+    const yo = p.id === auth.user.id;
+    const chips = admin && !yo ? `<div class="roles">` +
+        ROLES.map(r => `<button class="rol" data-id="${p.id}" data-rol="${r}"
+           aria-pressed="${p.rol === r}">${r}</button>`).join("") +
+        `<button class="rol out" data-out="${p.id}">Sacar</button></div>` : "";
+    return `<div class="socio">
+      <div class="l1"><b>${esc(p.nombre)}</b><em>${esc(p.rol)}</em></div>
+      <div class="l2">${esc(p.mail)} · ${p.sesiones} sesiones</div>${chips}</div>`;
+  }).join("");
+
+  b.innerHTML = `
+    <h1 style="font-size:25px">${club ? esc(club.nombre) : "Todos los clubes"}</h1>
+    ${club ? `<div class="codigo"><small>Código de invitación</small><b>${esc(club.codigo || "—")}</b>
+      <small>${club.socios} socios · pasáselo a quien quieras sumar</small></div>` : ""}
+    ${admin ? `<p style="color:var(--muted);font-size:15px;margin:14px 0 0">
+      Tocá un rol para cambiarlo. El entrenador ve las estadísticas de todos; el anotador puede
+      cargar sesiones grupales; el arquero solo lo suyo.</p>` : ""}
+    <div class="chart-head"><h2>Socios</h2></div>
+    ${lista || '<div class="empty">Todavía no hay nadie más.</div>'}`;
+
+  b.querySelectorAll(".rol[data-rol]").forEach(el => el.onclick = async () => {
+    try{ await rpc("set_rol", {p_id: el.dataset.id, p_rol: el.dataset.rol});
+         await cargarClub(); renderClub(); toast("Rol actualizado"); }
+    catch(e){ toast(msgErr(e)); }
+  });
+  b.querySelectorAll(".rol[data-out]").forEach(el => el.onclick = async () => {
+    if(!await ask({title:"¿Sacarlo del club?", text:"Sus datos no se borran, solo deja de pertenecer.", ok:"Sacar"})) return;
+    try{ await rpc("sacar_del_club", {p_id: el.dataset.out});
+         await cargarClub(); renderClub(); toast("Listo"); }
+    catch(e){ toast(msgErr(e)); }
+  });
+  show("club");
+}
+function msgErr(e){
+  const t = (e && e.message) || "";
+  const m = t.match(/"message":"([^"]+)"/);
+  return m ? m[1] : (t.slice(0,70) || "No se pudo");
+}
+$("club-back").onclick = () => show("home");
+$("go-club").onclick = () => { cargarClub().then(renderClub); };
+
 /* --- pantalla de cuenta --- */
 $("auth-back").onclick = () => show("home");
 $("a-up").onclick = async () => {
@@ -869,7 +989,7 @@ $("a-up").onclick = async () => {
     const listo = await registrar(mail, pass, nom);
     if(!listo) return toast("Te mandamos un mail para confirmar. Confirmá y entrá.");
     toast("Cuenta creada");
-    renderAcct(); show("home"); syncNow(false);
+    renderAcct(); show("home"); syncNow(false); cargarClub();
   } catch(e){ toast(e.message); }
 };
 $("a-in").onclick = async () => {
@@ -884,7 +1004,7 @@ $("a-in").onclick = async () => {
   try{
     await ingresar(mail, pass);
     toast("Hola de nuevo");
-    renderAcct(); show("home"); syncNow(false);
+    renderAcct(); show("home"); syncNow(false); cargarClub();
   } catch(e){ toast(e.message); }
 };
 window.addEventListener("online",  () => { renderAcct(); syncNow(true); });
@@ -919,6 +1039,23 @@ $("go-install").onclick = async () => {
   $("go-install").classList.add("hidden");
 };
 
+/* ---------- versión y actualización ---------- */
+$("ver").textContent = VERSION;
+$("upd").onclick = async () => {
+  toast("Buscando…");
+  try{
+    if("serviceWorker" in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){ await r.update(); await r.unregister(); }
+    }
+    if(window.caches){
+      const ks = await caches.keys();
+      await Promise.all(ks.map(k => caches.delete(k)));
+    }
+  } catch {}
+  location.reload(true);
+};
+
 /* ---------- arranque ---------- */
 (async function init(){
   buildPad();
@@ -943,7 +1080,7 @@ $("go-install").onclick = async () => {
   renderAcct();
   show("home");
   checkDurability();
-  if(auth){ await refrescar(); await asegurarPerfil().catch(()=>{}); syncNow(true); }
+  if(auth){ await refrescar(); await asegurarPerfil().catch(()=>{}); syncNow(true); cargarClub(); }
 })();
 
 if("serviceWorker" in navigator){

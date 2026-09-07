@@ -61,3 +61,49 @@ sesión iniciada no da acceso a nada, porque las políticas del punto 1 filtran
 todo por usuario. La que nunca hay que poner en la app ni pasarle a nadie es la
 `service_role`, que está en la misma pantalla del panel y saltea todas las
 políticas.
+
+---
+
+# Gestión de socios y roles (versión con pantalla propia)
+
+Después de correr el `esquema.sql` actualizado, la app trae una pantalla **Mi club**
+en el pie de la portada, y ya no hace falta el SQL Editor para el día a día.
+
+## Volverte superadministrador (una sola vez)
+
+El primer superadmin hay que ponerlo a mano, porque no hay nadie que pueda
+nombrarlo todavía. En el SQL Editor, con tu cuenta ya creada desde la app:
+
+```sql
+update profiles set rol = 'superadmin'
+where id = (select id from auth.users where email = 'TUMAIL@ejemplo.com');
+```
+
+Cerrá sesión en la app y volvé a entrar para que tome el rol nuevo.
+
+## Después, todo desde la app
+
+1. **Mi club** → *Crear el club*: nombre `TAPURU` y código de invitación, por
+   ejemplo `TAPURU`. Quien lo crea queda como admin del club.
+2. Pasás el código a los compañeros. Cada uno se registra en la app y entra a
+   **Mi club** → *Sumarme al club* → escribe el código.
+3. En la lista de socios tocás el rol que le corresponde a cada uno. Cambia al
+   instante.
+
+## Qué puede cada rol
+
+| Rol | Carga lo suyo | Anota grupales | Ve a todo el club | Gestiona socios |
+|---|---|---|---|---|
+| arquero | sí | no | no | no |
+| anotador | sí | sí | no | no |
+| entrenador | sí | sí | sí, solo lectura | no |
+| admin | sí | sí | sí, solo lectura | sí, en su club |
+| superadmin | sí | sí | todos los clubes | sí, en todos |
+
+Reglas que impone la base, no la pantalla, así que no se saltean:
+
+- Nadie puede cambiarse el rol a sí mismo, salvo el superadmin.
+- Solo un superadmin puede nombrar a otro superadmin.
+- Un admin solo toca socios de su propio club.
+- Sacar a alguien del club no borra sus datos: lo desvincula y sus sesiones
+  quedan en su cuenta.

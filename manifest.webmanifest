@@ -1,7 +1,7 @@
 {
-  "name": "Registro de arquería",
-  "short_name": "Arquería",
-  "description": "Registro de entrenamientos de arquería recurvo: puntaje por flecha, series y progreso.",
+  "name": "TAPURU — Registro de arquería",
+  "short_name": "TAPURU",
+  "description": "Registro de entrenamientos y competencias del club TAPURU, tiro con arco, Paysandú.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -10,8 +10,21 @@
   "theme_color": "#151A19",
   "lang": "es",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
