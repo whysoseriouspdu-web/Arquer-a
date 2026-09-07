@@ -145,6 +145,37 @@
   .codigo{background:var(--surface);border-radius:10px;padding:14px 16px;margin:14px 0 6px}
   .codigo b{display:block;font-size:30px;letter-spacing:.14em;font-weight:700}
   .codigo small{color:var(--muted);font-size:14px}
+  /* navegación inferior */
+  body{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;
+    background:var(--surface);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);max-width:560px;margin:0 auto}
+  .nav button{flex:1;padding:10px 4px 12px;color:var(--muted);font-size:12.5px;
+    display:flex;flex-direction:column;align-items:center;gap:3px}
+  .nav button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;
+    stroke-linecap:round;stroke-linejoin:round}
+  .nav button[aria-pressed="true"]{color:var(--gold)}
+
+  /* estadísticas */
+  .kpi{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin:14px 0}
+  .kpi div{flex:1 1 33%;background:var(--surface);padding:12px 10px;min-width:92px}
+  .kpi b{display:block;font-size:23px;font-weight:700;line-height:1.1}
+  .kpi small{color:var(--muted);font-size:13px}
+  .bar{display:flex;align-items:center;gap:9px;margin:5px 0;font-size:14.5px}
+  .bar span:first-child{min-width:30px;color:var(--muted);text-align:right}
+  .bar .track{flex:1;height:15px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:4px}
+  .bar span:last-child{min-width:44px;color:var(--muted);font-size:13.5px}
+  .sug{border-left:3px solid var(--gold);background:var(--surface);border-radius:8px;
+    padding:12px 14px;margin-bottom:9px}
+  .sug b{display:block;font-size:16.5px;margin-bottom:3px}
+  .sug p{margin:0;color:var(--muted);font-size:15px;line-height:1.45}
+  .sug.alta{border-left-color:var(--red)}
+  .tabla{width:100%;border-collapse:collapse;font-size:15.5px;margin-top:6px}
+  .tabla th{text-align:left;color:var(--muted);font-weight:500;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .tabla td{padding:9px 0;border-bottom:1px solid var(--line)}
+  .tabla td:last-child,.tabla th:last-child{text-align:right;font-weight:600}
+  .socio.tap{cursor:pointer}
   .sheet{position:fixed;inset:0;background:rgba(10,13,12,.72);display:grid;place-items:end center;padding:16px;z-index:9}
   .sheet-inner{background:var(--surface);border-radius:14px;padding:18px;width:100%;max-width:528px}
   .sheet h3{font-size:20px;margin-bottom:6px}
@@ -191,17 +222,7 @@
     <div class="chart-head"><h2>Sesiones</h2></div>
     <div id="list"></div>
 
-    <div class="tools">
-      <button id="exp-json">Guardar respaldo</button>
-      <button id="exp-csv">Exportar CSV</button>
-      <button id="imp">Restaurar</button>
-    </div>
-    <p class="hint">Los datos se guardan en el teléfono. Hacé un respaldo cada tanto.</p>
     <div class="acct" id="acct"></div>
-    <button class="ghost hidden" id="go-club" style="margin-top:10px">Mi club</button>
-    <p class="hint" style="margin-top:18px">
-      versión <span id="ver"></span> · <button id="upd" style="color:var(--gold);text-decoration:underline">buscar actualización</button>
-    </p>
     <input type="file" id="file" accept="application/json,.json" class="hidden">
   </div>
 </section>
@@ -210,6 +231,7 @@
   <button class="back" id="new-back">← Volver</button>
   <div class="wrap">
     <h1 style="font-size:25px">Nueva sesión</h1>
+    <label>Tipo</label><div class="opts" id="op-tipo"></div>
     <label>¿Quién tira?</label><div class="opts" id="op-modo"></div>
 
     <div id="group-box" class="hidden">
@@ -278,15 +300,29 @@
   </div>
 </section>
 
+<section id="v-stats" class="hidden">
+  <div class="wrap" id="stats-body" style="padding-top:22px"></div>
+</section>
+
+<section id="v-account" class="hidden">
+  <div class="wrap" id="account-body" style="padding-top:22px"></div>
+</section>
+
 <section id="v-club" class="hidden">
-  <button class="back" id="club-back">← Volver</button>
-  <div class="wrap" id="club-body"></div>
+  <div class="wrap" id="club-body" style="padding-top:22px"></div>
 </section>
 
 <section id="v-detail" class="hidden">
   <button class="back" id="det-back">← Volver</button>
   <div class="wrap" id="det-body"></div>
 </section>
+
+<nav class="nav" id="nav">
+  <button data-v="home" aria-pressed="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>Tirar</button>
+  <button data-v="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Estadísticas</button>
+  <button data-v="club"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M16 15c3 0 5 1.6 5 4.5"/></svg>Club</button>
+  <button data-v="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-3.7 3.4-6 7.5-6s7.5 2.3 7.5 6"/></svg>Mi cuenta</button>
+</nav>
 
 <div class="sheet hidden" id="sheet">
   <div class="sheet-inner">
@@ -306,7 +342,7 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
-const VERSION = "5.0";
+const VERSION = "6.0";
 const KEY_P = "arqueria.companeros";
 const KEY_T = "arqueria.sesion_cuenta";
 const KEY_D = "arqueria.borradas";
@@ -408,10 +444,23 @@ const xCount = a => flat(a).filter(c => c === "X" || c === "10").length;
 const shots = s => archersOf(s).reduce((t,a) => t + flat(a).length, 0);
 const fmtDate = iso => new Date(iso).toLocaleDateString("es",{day:"2-digit",month:"short"}).replace(".","");
 
+const VISTAS = ["home","new","shoot","detail","auth","club","stats","account"];
+const RAIZ = {home:"home", new:"home", shoot:"home", detail:"home",
+              auth:"account", account:"account", club:"club", stats:"stats"};
 function show(v){
-  ["home","new","shoot","detail","auth","club"].forEach(n => $("v-"+n).classList.toggle("hidden", n !== v));
+  VISTAS.forEach(n => $("v-"+n).classList.toggle("hidden", n !== v));
+  document.querySelectorAll("#nav button").forEach(b =>
+    b.setAttribute("aria-pressed", b.dataset.v === RAIZ[v]));
+  $("nav").classList.toggle("hidden", v === "shoot");   // sin distracciones mientras tirás
   window.scrollTo(0,0);
 }
+document.querySelectorAll("#nav button").forEach(b => b.onclick = () => {
+  const v = b.dataset.v;
+  if(v === "stats") return renderStats();
+  if(v === "club")  return auth ? cargarClub().then(renderClub) : renderAccount("club");
+  if(v === "account") return renderAccount();
+  show("home");
+});
 
 /* ---------- inicio ---------- */
 function renderHome(){
@@ -461,7 +510,7 @@ function renderChart(mias){
 }
 
 /* ---------- nueva sesión ---------- */
-const form = { modo:"Solo yo", dist:18, per:6, ends:10, place:"", nombres:[] };
+const form = { tipo:"Entrenamiento", modo:"Solo yo", dist:18, per:6, ends:10, place:"", nombres:[] };
 
 function chips(host, values, field, suffix=""){
   const el = $(host); el.innerHTML = "";
@@ -506,6 +555,7 @@ function addName(n){
   renderPeople();
 }
 function renderNew(){
+  chips("op-tipo",["Entrenamiento","Competencia"],"tipo");
   chips("op-modo",["Solo yo","Grupo"],"modo");
   chips("op-dist",[18,30,50,70],"dist"," m");
   chips("op-per",[3,6],"per");
@@ -684,8 +734,7 @@ function exportJson(){
   save(KEY_B, sessions.length);
   toast("Respaldo descargado");
 }
-$("exp-json").onclick = exportJson;
-$("exp-csv").onclick = () => {
+function exportCsv(){
   if(!sessions.length) return toast("Todavía no hay nada para exportar");
   const rows = [["fecha","distancia","lugar","arquero","serie","flecha","valor","puntos","nota"]];
   sessions.forEach(s => archersOf(s).forEach(a => a.ends.forEach((end,i) => end.forEach((c,j) =>
@@ -693,8 +742,7 @@ $("exp-csv").onclick = () => {
                (s.note || "").replace(/[\r\n;]/g," ")])))));
   download(`arqueria-${stamp()}.csv`, rows.map(r => r.join(";")).join("\n"), "text/csv;charset=utf-8");
   toast("CSV descargado");
-};
-$("imp").onclick = () => $("file").click();
+}
 $("file").onchange = async e => {
   const f = e.target.files[0]; if(!f) return;
   try{
@@ -785,7 +833,6 @@ async function asegurarPerfil(nombre){
 }
 function salir(){
   auth = null; club = null; socios = []; wipe(KEY_T);
-  $("go-club").classList.add("hidden");
   $("top-club").textContent = "recurvo";
   renderAcct(); toast("Sesión cerrada. Los datos siguen en el teléfono.");
 }
@@ -794,14 +841,14 @@ function salir(){
 function aFila(s){
   return { id:s.id, owner:auth.user.id, fecha:s.date, distancia:s.dist,
            flechas_serie:s.per, series_previstas:s.endsPlan || null,
-           lugar:s.place || null, nota:s.note || null,
+           lugar:s.place || null, nota:s.note || null, tipo:s.tipo || 'entrenamiento',
            actualizado:s.actualizado || new Date().toISOString() };
 }
 function deFila(f){
   const arqs = (f.session_archers || []).map(a => ({
     id:a.id, name:a.nombre, me:a.profile_id === auth.user.id, ends:a.ends || []}));
   if(!arqs.some(a => a.me) && arqs.length) arqs[0].me = true;
-  return { id:f.id, date:f.fecha, dist:f.distancia, per:f.flechas_serie,
+  return { id:f.id, date:f.fecha, dist:f.distancia, per:f.flechas_serie, tipo:f.tipo,
            endsPlan:f.series_previstas, place:f.lugar || "", note:f.nota || "",
            actualizado:f.actualizado, archers:arqs, sincronizada:true };
 }
@@ -861,7 +908,7 @@ function renderAcct(){
   if(!auth){
     el.innerHTML = `<span class="st">Solo en este teléfono</span>
       <button id="ac-in">Entrar al club</button>`;
-    $("ac-in").onclick = () => { $("a-namebox").classList.add("hidden"); show("auth"); };
+    $("ac-in").onclick = () => renderAccount();
     return;
   }
   const pend = pendientes();
@@ -875,11 +922,229 @@ function renderAcct(){
   el.innerHTML = `<span class="st"><b>${esc(auth.nombre || auth.user.email)}</b>
       <span class="dot ${clase}"></span>${txt}</span>
     <button class="sy" id="ac-sy">Sincronizar</button>
-    <button id="ac-out">Salir</button>`;
+    <button id="ac-out">Mi cuenta</button>`;
   $("ac-sy").onclick = () => syncNow(false);
-  $("ac-out").onclick = salir;
+  $("ac-out").onclick = () => renderAccount();
 }
 
+
+
+/* ================= estadísticas y sugerencias =================
+   Trabaja sobre "planillas": lista de {s, a}, donde s tiene
+   dist/date/tipo/per y a tiene ends. Sirve igual para mis sesiones
+   locales y para las de otro arquero traídas del servidor.        */
+
+function planillasMias(){
+  return sessions.filter(s => flat(mine(s)).length).map(s => ({s, a:mine(s)}));
+}
+
+function analizar(pl){
+  const arrows = [];
+  pl.forEach(({a}) => a.ends.forEach(e => e.forEach(c => arrows.push(val(c)))));
+  const n = arrows.length;
+  if(!n) return null;
+
+  const suma = arrows.reduce((t,v) => t+v, 0);
+  const prom = suma/n;
+  const desv = Math.sqrt(arrows.reduce((t,v) => t + (v-prom)**2, 0)/n);
+  const pct = f => 100*arrows.filter(f).length/n;
+
+  // promedio por posición de serie, para ver arranque y final
+  const porSerie = {};
+  pl.forEach(({a}) => a.ends.forEach((e,i) => {
+    (porSerie[i] = porSerie[i] || []).push(...e.map(val));
+  }));
+  const curva = Object.keys(porSerie).map(i => ({
+    serie: +i+1,
+    prom: porSerie[i].reduce((t,v)=>t+v,0)/porSerie[i].length,
+    flechas: porSerie[i].length
+  })).filter(x => x.flechas >= 6);
+
+  const promDe = arr => arr.length ? arr.reduce((t,v)=>t+v,0)/arr.length : null;
+  const primeras = promDe(curva.slice(0,2).map(x => x.prom));
+  const ultimas  = promDe(curva.slice(-2).map(x => x.prom));
+
+  // por distancia
+  const dist = {};
+  pl.forEach(({s,a}) => {
+    const f = a.ends.flat().map(val);
+    if(!f.length) return;
+    const d = dist[s.dist] = dist[s.dist] || {flechas:0, suma:0, sesiones:0};
+    d.flechas += f.length; d.suma += f.reduce((t,v)=>t+v,0); d.sesiones++;
+  });
+
+  // entrenamiento contra competencia
+  const grupo = t => {
+    const f = [];
+    pl.forEach(({s,a}) => { if((s.tipo || "entrenamiento") === t) a.ends.forEach(e => f.push(...e.map(val))); });
+    return f.length >= 24 ? f.reduce((t2,v)=>t2+v,0)/f.length : null;
+  };
+  const entrenamiento = grupo("entrenamiento"), competencia = grupo("competencia");
+
+  // tendencia: últimas 5 sesiones contra las 5 anteriores
+  const orden = pl.slice().sort((x,y) => new Date(x.s.date) - new Date(y.s.date));
+  const promSesion = p => { const f = p.a.ends.flat().map(val);
+    return f.length ? f.reduce((t,v)=>t+v,0)/f.length : null; };
+  const proms = orden.map(promSesion).filter(v => v !== null);
+  const ult = proms.slice(-5), ant = proms.slice(-10,-5);
+  const tendencia = (ult.length >= 3 && ant.length >= 3)
+    ? promDe(ult) - promDe(ant) : null;
+
+  // frecuencia semanal del último mes
+  const hace30 = Date.now() - 30*864e5;
+  const recientes = pl.filter(p => new Date(p.s.date).getTime() > hace30).length;
+
+  return { n, suma, prom, desv, curva, primeras, ultimas, dist,
+           entrenamiento, competencia, tendencia, recientes,
+           sesiones: pl.length,
+           pctX: pct(v => v === 10), pct9: pct(v => v >= 9),
+           pctBajo: pct(v => v <= 5 && v > 0), pctM: pct(v => v === 0),
+           distrib: [10,9,8,7,6,5,4,3,2,1,0].map(v => ({v, p: pct(x => x === v)})),
+           ultima: orden.length ? orden[orden.length-1].s.date : null };
+}
+
+function sugerencias(m){
+  const out = [];
+  if(m.n < 60) return [{alta:false, t:"Falta volumen para analizar",
+    d:"Con menos de 60 flechas cargadas cualquier conclusión es ruido. Seguí registrando y en dos o tres sesiones esto empieza a tener sentido."}];
+
+  if(m.primeras !== null && m.primeras < m.prom - 0.35)
+    out.push({alta:false, t:"Arrancás frío",
+      d:`Las dos primeras series promedian ${m.primeras.toFixed(2)} contra ${m.prom.toFixed(2)} del total. Probá 15 o 20 flechas de calentamiento a media distancia, sin puntaje, antes de empezar a anotar.`});
+
+  if(m.ultimas !== null && m.ultimas < m.prom - 0.35)
+    out.push({alta:true, t:"Caés sobre el final",
+      d:`Las últimas series bajan a ${m.ultimas.toFixed(2)}. Suele ser resistencia, no técnica. Sumá trabajo específico con banda o SPT fuera de la sesión, y si la caída aparece siempre en la misma serie, cortá ahí y descansá en vez de forzar.`});
+
+  if(m.desv > 2.3)
+    out.push({alta:true, t:"Agrupación despareja",
+      d:`La dispersión de tus flechas es alta (desvío ${m.desv.toFixed(2)}). Trabajo de blanco ciego a corta distancia, sin diana, concentrado en la ejecución y no en el resultado. Dos sesiones por semana de 30 flechas suelen ordenar bastante.`});
+  else if(m.desv < 1.4 && m.prom > 7.5)
+    out.push({alta:false, t:"Sos muy consistente",
+      d:`Con desvío ${m.desv.toFixed(2)} tu técnica repite bien. El margen ahora está en el afinado del material y en subir distancia, más que en corregir ejecución.`});
+
+  if(m.pctM > 1.5)
+    out.push({alta:true, t:"Flechas perdidas",
+      d:`Un ${m.pctM.toFixed(1)}% de tus flechas quedan fuera. A esa altura no es puntería: revisá anclaje, alineación y estado del material, y descartá una flecha mal calibrada probándolas numeradas.`});
+
+  if(m.tendencia !== null && m.tendencia < -0.3)
+    out.push({alta:true, t:"Venís bajando",
+      d:`Tus últimas cinco sesiones promedian ${Math.abs(m.tendencia).toFixed(2)} puntos menos por flecha que las cinco anteriores. Si cambiaste algo del equipo, volvé atrás y probá. Si no cambiaste nada, suele ser cansancio acumulado: una semana de menos volumen y más calidad.`});
+  else if(m.tendencia !== null && m.tendencia > 0.3)
+    out.push({alta:false, t:"Venís en alza",
+      d:`Subiste ${m.tendencia.toFixed(2)} puntos por flecha respecto de las cinco sesiones anteriores. Lo que estás haciendo funciona: no cambies nada del material por ahora.`});
+
+  if(m.entrenamiento !== null && m.competencia !== null && m.entrenamiento - m.competencia > 0.4)
+    out.push({alta:true, t:"Rendís menos en competencia",
+      d:`Entrenando promediás ${m.entrenamiento.toFixed(2)} y compitiendo ${m.competencia.toFixed(2)}. La diferencia es de manejo de presión, no de técnica. Simulá rondas completas con tiempo y puntaje anotado, y tirá delante de gente que te mire.`});
+
+  if(m.recientes < 4)
+    out.push({alta:false, t:"Poca frecuencia",
+      d:`Registraste ${m.recientes} sesiones en el último mes. Dos veces por semana sostenidas rinden más que una jornada larga cada quince días, sobre todo para fijar técnica.`});
+
+  const ds = Object.keys(m.dist);
+  if(ds.length === 1)
+    out.push({alta:false, t:"Siempre la misma distancia",
+      d:`Tirás siempre a ${ds[0]} m. Alternar una distancia más corta ayuda a limpiar la técnica y una más larga expone errores de expansión que a corta se disimulan.`});
+
+  if(m.pct9 > 55 && m.pctX < 25)
+    out.push({alta:false, t:"Cerca pero no adentro",
+      d:`Metés ${m.pct9.toFixed(0)}% de nueves o más, pero solo ${m.pctX.toFixed(0)}% de dieces. Ahí ya no es agrupación sino centrado: revisá el ajuste fino de la mira y el punto de anclaje.`});
+
+  if(!out.length)
+    out.push({alta:false, t:"Sin señales claras",
+      d:"Los números no muestran ningún patrón marcado para corregir. Seguí con tu plan actual y volvé a mirar esto en unas semanas."});
+
+  return out;
+}
+
+function barra(v, p){
+  const color = v >= 9 ? "var(--gold)" : v >= 7 ? "var(--red)" : v >= 5 ? "var(--blue)"
+    : v >= 1 ? "var(--paper)" : "var(--surface-2)";
+  const et = v === 10 ? "10/X" : v === 0 ? "M" : v;
+  return `<div class="bar"><span>${et}</span><div class="track">
+    <div class="fill" style="width:${Math.max(p*2.4,0.7)}%;background:${color}"></div>
+    </div><span>${p.toFixed(1)}%</span></div>`;
+}
+
+function htmlStats(m, titulo, sub){
+  if(!m) return `<h1 style="font-size:25px">${esc(titulo)}</h1>
+    <div class="empty" style="margin-top:16px">Todavía no hay flechas cargadas.</div>`;
+  const filasDist = Object.keys(m.dist).sort((a,b)=>a-b).map(d => {
+    const x = m.dist[d];
+    return `<tr><td>${d} m</td><td>${x.sesiones}</td><td>${x.flechas}</td>
+      <td>${(x.suma/x.flechas).toFixed(2)}</td></tr>`;
+  }).join("");
+  const curva = m.curva.length > 2 ? `
+    <div class="chart-head"><h2>Por número de serie</h2><em>promedio por flecha</em></div>
+    ${m.curva.map(c => `<div class="bar"><span>${c.serie}ª</span><div class="track">
+        <div class="fill" style="width:${(c.prom/10*100).toFixed(1)}%;background:var(--gold)"></div>
+      </div><span>${c.prom.toFixed(2)}</span></div>`).join("")}` : "";
+
+  return `
+    <h1 style="font-size:25px">${esc(titulo)}</h1>
+    ${sub ? `<p style="color:var(--muted);margin:4px 0 0;font-size:15px">${esc(sub)}</p>` : ""}
+    <div class="kpi">
+      <div><b>${m.prom.toFixed(2)}</b><small>por flecha</small></div>
+      <div><b>${m.desv.toFixed(2)}</b><small>dispersión</small></div>
+      <div><b>${m.pctX.toFixed(0)}%</b><small>10 y X</small></div>
+      <div><b>${m.sesiones}</b><small>sesiones</small></div>
+      <div><b>${m.n}</b><small>flechas</small></div>
+      <div><b>${m.pct9.toFixed(0)}%</b><small>9 o más</small></div>
+    </div>
+
+    <div class="chart-head"><h2>Sugerencias</h2></div>
+    ${sugerencias(m).map(x => `<div class="sug ${x.alta ? "alta" : ""}">
+        <b>${x.t}</b><p>${x.d}</p></div>`).join("")}
+
+    <div class="chart-head"><h2>Dónde caen tus flechas</h2></div>
+    ${m.distrib.filter(x => x.p > 0).map(x => barra(x.v, x.p)).join("")}
+    ${curva}
+
+    <div class="chart-head"><h2>Por distancia</h2></div>
+    <table class="tabla"><tr><th>Distancia</th><th>Sesiones</th><th>Flechas</th><th>Promedio</th></tr>
+      ${filasDist}</table>
+
+    ${(m.entrenamiento !== null && m.competencia !== null) ? `
+      <div class="chart-head"><h2>Entrenamiento y competencia</h2></div>
+      <table class="tabla">
+        <tr><td>Entrenamiento</td><td>${m.entrenamiento.toFixed(2)}</td></tr>
+        <tr><td>Competencia</td><td>${m.competencia.toFixed(2)}</td></tr>
+      </table>` : ""}
+
+    <p class="hint" style="margin:22px 0 0;text-align:left">
+      Todo esto sale solo de los puntajes, que no dicen dónde impactó cada flecha.
+      Sirve para orientar, no para reemplazar lo que ve tu entrenador.</p>`;
+}
+
+function renderStats(){
+  $("stats-body").innerHTML = htmlStats(analizar(planillasMias()), "Mis estadísticas",
+    auth && auth.nombre ? auth.nombre : null);
+  show("stats");
+}
+
+/* --- datos del club para entrenadores y superadmin --- */
+let remotas = [];
+async function cargarDatosClub(){
+  try{ remotas = (await api("/rest/v1/sessions?select=*,session_archers(*)&limit=1000")) || []; }
+  catch { remotas = []; }
+}
+function planillasDe(pid){
+  const out = [];
+  remotas.forEach(f => (f.session_archers || []).forEach(a => {
+    if(a.profile_id === pid && (a.ends || []).length)
+      out.push({ s:{dist:f.distancia, date:f.fecha, tipo:f.tipo, per:f.flechas_serie},
+                 a:{ends:a.ends} });
+  }));
+  return out;
+}
+function verArquero(pid, nombre){
+  const m = analizar(planillasDe(pid));
+  $("stats-body").innerHTML = `<button class="back" style="padding:0 0 10px" id="st-back">← Volver al club</button>` +
+    htmlStats(m, nombre, "visto como " + (auth.rol === "superadmin" ? "superadministrador" : auth.rol));
+  $("st-back").onclick = () => renderClub();
+  show("stats");
+}
 
 /* ================= club y socios ================= */
 let club = null, socios = [];
@@ -895,9 +1160,9 @@ async function cargarClub(){
     socios = club || auth.rol === "superadmin" ? (await rpc("socios_del_club")) || [] : [];
     const yo = socios.find(x => x.id === auth.user.id);
     if(yo && yo.rol !== auth.rol){ auth.rol = yo.rol; save(KEY_T, auth); }
+    if(["entrenador","admin","superadmin"].includes(auth.rol)) await cargarDatosClub();
     $("top-club").textContent = club ? club.nombre : "recurvo";
   } catch(e){ club = null; socios = []; }
-  $("go-club").classList.toggle("hidden", !auth);
 }
 
 function renderClub(){
@@ -930,15 +1195,19 @@ function renderClub(){
   }
 
   const admin = soyAdmin();
+  const puedeVer = auth && ["entrenador","admin","superadmin"].includes(auth.rol);
   const lista = socios.map(p => {
     const yo = p.id === auth.user.id;
     const chips = admin && !yo ? `<div class="roles">` +
         ROLES.map(r => `<button class="rol" data-id="${p.id}" data-rol="${r}"
            aria-pressed="${p.rol === r}">${r}</button>`).join("") +
         `<button class="rol out" data-out="${p.id}">Sacar</button></div>` : "";
-    return `<div class="socio">
+    const m = puedeVer ? analizar(planillasDe(p.id)) : null;
+    const linea = m ? `${m.prom.toFixed(2)} por flecha · ${m.n} flechas · ${m.sesiones} sesiones`
+                    : `${esc(p.mail)} · ${p.sesiones} sesiones`;
+    return `<div class="socio ${puedeVer ? "tap" : ""}" ${puedeVer ? `data-ver="${p.id}" data-nom="${esc(p.nombre)}"` : ""}>
       <div class="l1"><b>${esc(p.nombre)}</b><em>${esc(p.rol)}</em></div>
-      <div class="l2">${esc(p.mail)} · ${p.sesiones} sesiones</div>${chips}</div>`;
+      <div class="l2">${linea}</div>${chips}</div>`;
   }).join("");
 
   b.innerHTML = `
@@ -951,6 +1220,10 @@ function renderClub(){
     <div class="chart-head"><h2>Socios</h2></div>
     ${lista || '<div class="empty">Todavía no hay nadie más.</div>'}`;
 
+  b.querySelectorAll(".socio[data-ver]").forEach(el => el.onclick = e => {
+    if(e.target.closest(".rol")) return;          // no abrir al tocar un rol
+    verArquero(el.dataset.ver, el.dataset.nom);
+  });
   b.querySelectorAll(".rol[data-rol]").forEach(el => el.onclick = async () => {
     try{ await rpc("set_rol", {p_id: el.dataset.id, p_rol: el.dataset.rol});
          await cargarClub(); renderClub(); toast("Rol actualizado"); }
@@ -969,8 +1242,56 @@ function msgErr(e){
   const m = t.match(/"message":"([^"]+)"/);
   return m ? m[1] : (t.slice(0,70) || "No se pudo");
 }
-$("club-back").onclick = () => show("home");
-$("go-club").onclick = () => { cargarClub().then(renderClub); };
+/* ================= mi cuenta ================= */
+function renderAccount(motivo){
+  const b = $("account-body");
+  if(!auth){
+    b.innerHTML = `
+      <h1 style="font-size:25px">Mi cuenta</h1>
+      <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+        ${motivo === "club"
+          ? "Para ver tu club y a tus compañeros necesitás una cuenta."
+          : "Sin cuenta la app funciona igual, pero los datos quedan solo en este teléfono."}
+        Con cuenta se copian al servidor del club y los recuperás en cualquier celular.</p>
+      <button class="primary" id="ac-go" style="margin-top:20px">Entrar o crear cuenta</button>
+      <div class="tools"><button id="e1">Guardar respaldo</button>
+        <button id="e2">Exportar CSV</button><button id="e3">Restaurar</button></div>
+      <p class="hint" style="margin-top:18px">versión ${VERSION} ·
+        <button id="upd2" style="color:var(--gold);text-decoration:underline">buscar actualización</button></p>`;
+    $("ac-go").onclick = () => { $("a-namebox").classList.add("hidden"); show("auth"); };
+  } else {
+    const rolTxt = {arquero:"Arquero", anotador:"Anotador", entrenador:"Entrenador",
+                    admin:"Administrador", superadmin:"Superadministrador"}[auth.rol] || "Arquero";
+    const pend = pendientes();
+    b.innerHTML = `
+      <h1 style="font-size:25px">Mi cuenta</h1>
+      <div class="kpi" style="margin-top:16px">
+        <div style="flex:1 1 100%"><b>${esc(auth.nombre || "")}</b><small>${esc(auth.user.email)}</small></div>
+        <div><b style="font-size:18px">${rolTxt}</b><small>rol</small></div>
+        <div><b style="font-size:18px">${club ? esc(club.nombre) : "—"}</b><small>club</small></div>
+      </div>
+      <div class="acct" style="border:0;padding:0;margin:6px 0 0">
+        <span class="st"><span class="dot ${!navigator.onLine ? "off" : pend ? "pend" : "ok"}"></span>${
+          !navigator.onLine ? "Sin conexión" : pend ? pend + " sin subir" : "Todo sincronizado"}</span>
+        <button class="sy" id="ac-sy2">Sincronizar</button>
+      </div>
+      <div class="tools"><button id="e1">Guardar respaldo</button>
+        <button id="e2">Exportar CSV</button><button id="e3">Restaurar</button></div>
+      <p class="hint" style="text-align:left;margin:0">
+        El respaldo es un archivo con todo tu historial. Mandátelo por mail cada tanto.</p>
+      <button class="ghost" id="ac-out2" style="margin-top:26px">Cerrar sesión</button>
+      <p class="hint" style="margin-top:18px">versión ${VERSION} ·
+        <button id="upd2" style="color:var(--gold);text-decoration:underline">buscar actualización</button></p>`;
+    $("ac-sy2").onclick = () => syncNow(false).then(() => renderAccount());
+    $("ac-out2").onclick = () => { salir(); renderAccount(); };
+  }
+  $("e1").onclick = exportJson;
+  $("e2").onclick = exportCsv;
+  $("e3").onclick = () => $("file").click();
+  $("upd2").onclick = actualizarApp;
+  show("account");
+}
+
 
 /* --- pantalla de cuenta --- */
 $("auth-back").onclick = () => show("home");
@@ -1022,7 +1343,8 @@ $("start").onclick = () => {
   const archers = [{id:"me", name:"Yo", me:true, ends:[]}];
   if(form.modo === "Grupo") form.nombres.forEach((n,i) => archers.push({id:"a"+i, name:n, ends:[]}));
   cur = { id:uid(), date:new Date().toISOString(), dist:form.dist, per:form.per,
-          endsPlan:form.ends, place:form.place, note:"", archers, active:0 };
+          endsPlan:form.ends, place:form.place, note:"", archers, active:0,
+          tipo: form.tipo === "Competencia" ? "competencia" : "entrenamiento" };
   renderShoot(); show("shoot");
 };
 $("go-resume").onclick = () => { renderShoot(); show("shoot"); };
@@ -1040,8 +1362,7 @@ $("go-install").onclick = async () => {
 };
 
 /* ---------- versión y actualización ---------- */
-$("ver").textContent = VERSION;
-$("upd").onclick = async () => {
+async function actualizarApp(){
   toast("Buscando…");
   try{
     if("serviceWorker" in navigator){
@@ -1054,7 +1375,7 @@ $("upd").onclick = async () => {
     }
   } catch {}
   location.reload(true);
-};
+}
 
 /* ---------- arranque ---------- */
 (async function init(){
