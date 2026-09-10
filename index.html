@@ -145,6 +145,9 @@
   .codigo{background:var(--surface);border-radius:10px;padding:14px 16px;margin:14px 0 6px}
   .codigo b{display:block;font-size:30px;letter-spacing:.14em;font-weight:700}
   .codigo small{color:var(--muted);font-size:14px}
+  .diana-wrap{background:var(--surface);border-radius:12px;padding:10px}
+  .diana-tip{color:var(--muted);font-size:14.5px;text-align:center;margin:9px 0 0}
+  .mini{background:var(--surface);border-radius:10px;padding:8px;margin-top:8px}
   /* navegación inferior */
   body{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
   .nav{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;
@@ -232,6 +235,10 @@
   <div class="wrap">
     <h1 style="font-size:25px">Nueva sesión</h1>
     <label>Tipo</label><div class="opts" id="op-tipo"></div>
+    <label>Cómo anotás</label><div class="opts" id="op-metodo"></div>
+    <div id="cara-box" class="hidden">
+      <label>Tamaño de la cara</label><div class="opts" id="op-cara"></div>
+    </div>
     <label>¿Quién tira?</label><div class="opts" id="op-modo"></div>
 
     <div id="group-box" class="hidden">
@@ -271,6 +278,7 @@
       </div>
       <div class="ends" id="l-ends"></div>
     </div>
+    <div id="diana" class="hidden"></div>
     <div class="pad" id="pad"></div>
     <div class="pad-foot">
       <button id="undo">Borrar última</button>
@@ -342,7 +350,7 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
-const VERSION = "6.0";
+const VERSION = "8.0";
 const KEY_P = "arqueria.companeros";
 const KEY_T = "arqueria.sesion_cuenta";
 const KEY_D = "arqueria.borradas";
@@ -354,8 +362,21 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID()
       const r = Math.random()*16|0; return (c === "x" ? r : (r&0x3|0x8)).toString(16); }));
 const CODES = [["X","g"],["10","g"],["9","g"],["8","r"],["7","r"],["6","b"],
                ["5","b"],["4","k"],["3","k"],["2","w"],["1","w"],["M","m"]];
-const cls = c => (CODES.find(k => k[0] === c) || ["","m"])[1];
-const val = c => c === "X" ? 10 : c === "M" ? 0 : +c;
+const code = a => (a && typeof a === "object" && a.c !== undefined) ? a.c : a;
+const cls = a => (CODES.find(k => k[0] === code(a)) || ["","m"])[1];
+const val = a => { const c = code(a); return c === "X" ? 10 : c === "M" ? 0 : +c; };
+const xy = a => (a && typeof a === "object" && a.x !== undefined) ? a : null;
+
+/* --- diana: geometría y puntaje --- */
+// r normalizado: 0 en el centro, 1 en el borde exterior del 1
+function codeDeRadio(r){
+  if(r > 1) return "M";
+  if(r <= 0.05) return "X";
+  const anillo = 11 - Math.ceil(r/0.1);
+  return String(Math.max(1, Math.min(10, anillo)));
+}
+const CARAS = [40, 60, 80, 122];   // diámetro en cm
+const aCm = (v, cara) => v * (cara/2);
 const $ = id => document.getElementById(id);
 const esc = t => String(t).replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
 
@@ -510,7 +531,8 @@ function renderChart(mias){
 }
 
 /* ---------- nueva sesión ---------- */
-const form = { tipo:"Entrenamiento", modo:"Solo yo", dist:18, per:6, ends:10, place:"", nombres:[] };
+const form = { tipo:"Entrenamiento", metodo:"Teclado", cara:122,
+               modo:"Solo yo", dist:18, per:6, ends:10, place:"", nombres:[] };
 
 function chips(host, values, field, suffix=""){
   const el = $(host); el.innerHTML = "";
@@ -521,10 +543,34 @@ function chips(host, values, field, suffix=""){
     b.onclick = () => {
       form[field] = v;
       chips(host, values, field, suffix);
-      if(field === "modo") $("group-box").classList.toggle("hidden", v !== "Grupo");
+      if(field === "modo")   $("group-box").classList.toggle("hidden", v !== "Grupo");
+      if(field === "metodo") $("cara-box").classList.toggle("hidden", v !== "Diana");
     };
     el.appendChild(b);
   });
+}
+const DIST = [5,10,15,18,25,30,50,70];
+function chipsDist(){
+  const el = $("op-dist"); el.innerHTML = "";
+  const lista = DIST.includes(form.dist) ? DIST : [...DIST, form.dist].sort((a,b) => a-b);
+  lista.forEach(v => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = v + " m";
+    b.setAttribute("aria-pressed", form.dist === v);
+    b.onclick = () => { form.dist = v; chipsDist(); };
+    el.appendChild(b);
+  });
+  const otra = document.createElement("button");
+  otra.className = "opt"; otra.textContent = "Otra…";
+  otra.onclick = async () => {
+    const v = await ask({title:"Distancia", text:"En metros. Sirve cualquier valor entre 1 y 200.",
+                         input:true, value:String(form.dist), ok:"Usar"});
+    if(v === null) return;
+    const n = Math.round(parseFloat(String(v).replace(",", ".")));
+    if(!n || n < 1 || n > 200) return toast("Poné un número entre 1 y 200");
+    form.dist = n; chipsDist();
+  };
+  el.appendChild(otra);
 }
 function renderPeople(){
   const el = $("people");
@@ -556,8 +602,11 @@ function addName(n){
 }
 function renderNew(){
   chips("op-tipo",["Entrenamiento","Competencia"],"tipo");
+  chips("op-metodo",["Teclado","Diana"],"metodo");
+  chips("op-cara",CARAS,"cara"," cm");
+  $("cara-box").classList.toggle("hidden", form.metodo !== "Diana");
   chips("op-modo",["Solo yo","Grupo"],"modo");
-  chips("op-dist",[18,30,50,70],"dist"," m");
+  chipsDist();
   chips("op-per",[3,6],"per");
   chips("op-ends",[6,10,12,20],"ends");
   $("group-box").classList.toggle("hidden", form.modo !== "Grupo");
@@ -604,18 +653,68 @@ function renderShoot(){
     const row = document.createElement("div");
     row.className = "end";
     row.innerHTML = `<span class="n">${i+1}</span>` +
-      end.map(c => `<span class="chip ${cls(c)}">${c}</span>`).join("") +
+      end.map(c => `<span class="chip ${cls(c)}">${code(c)}</span>`).join("") +
       `<span class="t">${sum}<i>${run}</i></span>`;
     host.appendChild(row);
   });
   host.scrollTop = host.scrollHeight;
+  const conDiana = cur.metodo === "diana";
+  $("pad").classList.toggle("hidden", conDiana);
+  $("diana").classList.toggle("hidden", !conDiana);
+  if(conDiana) pintarDiana();
   save(KEY_C, cur);
 }
-function addArrow(code){
+
+/* ---------- diana táctil ---------- */
+function svgCara(marcas, opts){
+  opts = opts || {};
+  const R = 100;
+  const anillos = [
+    [1.0,"var(--paper)"], [0.8,"#0C100F"], [0.6,"var(--blue)"],
+    [0.4,"var(--red)"],   [0.2,"var(--gold)"]
+  ].map(([f,c]) => `<circle cx="0" cy="0" r="${(f*R).toFixed(1)}" fill="${c}"/>`).join("");
+  const lineas = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
+    .map(f => `<circle cx="0" cy="0" r="${(f*R).toFixed(1)}" fill="none"
+       stroke="rgba(0,0,0,.42)" stroke-width="0.7"/>`).join("");
+  const centro = `<circle cx="0" cy="0" r="${0.05*R}" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="0.7"/>
+     <path d="M-3 0H3M0 -3V3" stroke="rgba(0,0,0,.55)" stroke-width="0.8"/>`;
+  const pts = marcas.map((m,i) => {
+    const ultimo = i === marcas.length-1 && !opts.todos;
+    return `<circle cx="${(m.x*R).toFixed(2)}" cy="${(m.y*R).toFixed(2)}"
+      r="${opts.chico ? 1.9 : (ultimo ? 3.4 : 2.7)}"
+      fill="${ultimo ? "#fff" : "rgba(255,255,255,.82)"}"
+      stroke="#111" stroke-width="${opts.chico ? 0.5 : 0.9}"/>`;
+  }).join("");
+  const cruz = opts.centro ? `<path d="M${(opts.centro.x*R-6).toFixed(1)} ${(opts.centro.y*R).toFixed(1)}
+      h12 M${(opts.centro.x*R).toFixed(1)} ${(opts.centro.y*R-6).toFixed(1)} v12"
+      stroke="#2BE07A" stroke-width="1.6" stroke-linecap="round"/>` : "";
+  return `<svg viewBox="-108 -108 216 216" style="width:100%;height:auto;display:block;touch-action:none">
+    ${anillos}${lineas}${centro}${pts}${cruz}</svg>`;
+}
+
+function pintarDiana(){
+  const a = active();
+  const ultima = a.ends[a.ends.length-1] || [];
+  const enSerie = (ultima.length < cur.per ? ultima : []).map(xy).filter(Boolean);
+  const el = $("diana");
+  el.innerHTML = `<div class="diana-wrap">${svgCara(enSerie)}</div>
+    <p class="diana-tip">Tocá donde impactó la flecha. ${enSerie.length}/${cur.per} de esta serie.</p>`;
+  const svg = el.querySelector("svg");
+  svg.addEventListener("pointerdown", ev => {
+    ev.preventDefault();
+    const r = svg.getBoundingClientRect();
+    // el viewBox va de -108 a 108
+    const x = ((ev.clientX - r.left)/r.width  * 216 - 108)/100;
+    const y = ((ev.clientY - r.top )/r.height * 216 - 108)/100;
+    const rad = Math.hypot(x,y);
+    addArrow({c: codeDeRadio(rad), x:+x.toFixed(4), y:+y.toFixed(4)});
+  });
+}
+function addArrow(flecha){
   const a = active();
   let last = a.ends[a.ends.length - 1];
   if(!last || last.length >= cur.per){ last = []; a.ends.push(last); }
-  last.push(code);
+  last.push(flecha);
   if(navigator.vibrate) navigator.vibrate(8);
   if(last.length >= cur.per && cur.archers.length > 1){
     cur.active = (cur.active + 1) % cur.archers.length;   // pasa al siguiente arquero
@@ -686,12 +785,14 @@ function renderDetail(id){
     const rows = a.ends.map((end,i) => {
       const sum = end.reduce((t,c) => t + val(c), 0); run += sum;
       return `<div class="end"><span class="n">${i+1}</span>` +
-        end.map(c => `<span class="chip ${cls(c)}">${c}</span>`).join("") +
+        end.map(c => `<span class="chip ${cls(c)}">${code(c)}</span>`).join("") +
         `<span class="t">${sum}<i>${run}</i></span></div>`;
     }).join("");
+    const marcas = a.ends.flat().map(xy).filter(Boolean);
+    const mini = marcas.length ? `<div class="mini">${svgCara(marcas, {chico:true, todos:true})}</div>` : "";
     return `<div class="arq-head"><h3>${esc(a.name)}</h3><span>${totalOf(a)} pts</span></div>
       <p style="color:var(--muted);margin:0 0 6px;font-size:15px">
-        ${avgOf(a).toFixed(2)} por flecha · ${xCount(a)} X+10 · ${flat(a).length} flechas</p>${rows}`;
+        ${avgOf(a).toFixed(2)} por flecha · ${xCount(a)} X+10 · ${flat(a).length} flechas</p>${mini}${rows}`;
   }).join("");
 
   const yo = mine(s);
@@ -728,18 +829,32 @@ function download(name, text, type){
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 const stamp = () => new Date().toISOString().slice(0,10);
-function exportJson(){
+async function exportJson(){
   if(!sessions.length) return toast("Todavía no hay nada para respaldar");
-  download(`arqueria-respaldo-${stamp()}.json`, JSON.stringify({v:2, sessions}, null, 1), "application/json");
+  const txt = JSON.stringify({v:2, sessions}, null, 1);
+  const nombre = `arqueria-respaldo-${stamp()}.json`;
+  // en el iPhone instalado, descargar no siempre abre nada: compartir sí
+  try{
+    const f = new File([txt], nombre, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[f]})){
+      await navigator.share({files:[f], title:"Respaldo de arquería"});
+      save(KEY_B, sessions.length);
+      return toast("Respaldo compartido");
+    }
+  } catch(e){ if(e && e.name === "AbortError") return; }
+  download(nombre, txt, "application/json");
   save(KEY_B, sessions.length);
   toast("Respaldo descargado");
 }
 function exportCsv(){
   if(!sessions.length) return toast("Todavía no hay nada para exportar");
-  const rows = [["fecha","distancia","lugar","arquero","serie","flecha","valor","puntos","nota"]];
-  sessions.forEach(s => archersOf(s).forEach(a => a.ends.forEach((end,i) => end.forEach((c,j) =>
-    rows.push([s.date.slice(0,10), s.dist, s.place || "", a.name, i+1, j+1, c, val(c),
-               (s.note || "").replace(/[\r\n;]/g," ")])))));
+  const rows = [["fecha","distancia","lugar","arquero","serie","flecha","valor","puntos","x_cm","y_cm","nota"]];
+  sessions.forEach(s => archersOf(s).forEach(a => a.ends.forEach((end,i) => end.forEach((c,j) => {
+    const p = xy(c), cara = s.cara || 122;
+    rows.push([s.date.slice(0,10), s.dist, s.place || "", a.name, i+1, j+1, code(c), val(c),
+               p ? aCm(p.x, cara).toFixed(1) : "", p ? aCm(-p.y, cara).toFixed(1) : "",
+               (s.note || "").replace(/[\r\n;]/g," ")]);
+  }))));
   download(`arqueria-${stamp()}.csv`, rows.map(r => r.join(";")).join("\n"), "text/csv;charset=utf-8");
   toast("CSV descargado");
 }
@@ -842,6 +957,7 @@ function aFila(s){
   return { id:s.id, owner:auth.user.id, fecha:s.date, distancia:s.dist,
            flechas_serie:s.per, series_previstas:s.endsPlan || null,
            lugar:s.place || null, nota:s.note || null, tipo:s.tipo || 'entrenamiento',
+           metodo:s.metodo || 'teclado', cara:s.cara || null,
            actualizado:s.actualizado || new Date().toISOString() };
 }
 function deFila(f){
@@ -849,6 +965,7 @@ function deFila(f){
     id:a.id, name:a.nombre, me:a.profile_id === auth.user.id, ends:a.ends || []}));
   if(!arqs.some(a => a.me) && arqs.length) arqs[0].me = true;
   return { id:f.id, date:f.fecha, dist:f.distancia, per:f.flechas_serie, tipo:f.tipo,
+           metodo:f.metodo, cara:f.cara,
            endsPlan:f.series_previstas, place:f.lugar || "", note:f.nota || "",
            actualizado:f.actualizado, archers:arqs, sincronizada:true };
 }
@@ -990,12 +1107,80 @@ function analizar(pl){
   const tendencia = (ult.length >= 3 && ant.length >= 3)
     ? promDe(ult) - promDe(ant) : null;
 
-  // frecuencia semanal del último mes
+  // frecuencia del último mes y días desde la última vez
   const hace30 = Date.now() - 30*864e5;
   const recientes = pl.filter(p => new Date(p.s.date).getTime() > hace30).length;
+  const ultimaFecha = orden.length ? new Date(orden[orden.length-1].s.date) : null;
+  const diasDesde = ultimaFecha ? Math.floor((Date.now() - ultimaFecha.getTime())/864e5) : null;
 
-  return { n, suma, prom, desv, curva, primeras, ultimas, dist,
-           entrenamiento, competencia, tendencia, recientes,
+  // cuánto varían las sesiones entre sí, distinto de la dispersión flecha a flecha
+  const mediaS = promDe(proms);
+  const varSesion = proms.length >= 4
+    ? Math.sqrt(proms.reduce((t,v) => t + (v-mediaS)**2, 0)/proms.length) : null;
+
+  // promedio según qué número de flecha es dentro de la serie
+  const porPos = {};
+  pl.forEach(({a}) => a.ends.forEach(e => e.forEach((c,j) => {
+    (porPos[j] = porPos[j] || []).push(val(c));
+  })));
+  const posiciones = Object.keys(porPos).map(j => ({
+    pos: +j+1, prom: porPos[j].reduce((t,v)=>t+v,0)/porPos[j].length, flechas: porPos[j].length
+  })).filter(x => x.flechas >= 8);
+
+  // récords: mejor serie y mejor sesión
+  let mejorSerie = null, mejorSesion = null;
+  pl.forEach(({s,a}) => {
+    a.ends.forEach(e => {
+      if(e.length < 3) return;
+      const t = e.reduce((x,c) => x + val(c), 0);
+      if(!mejorSerie || t/e.length > mejorSerie.prom)
+        mejorSerie = {total:t, flechas:e.length, prom:t/e.length, dist:s.dist, fecha:s.date};
+    });
+    const f = a.ends.flat().map(val);
+    if(f.length >= 12){
+      const p = f.reduce((t,v)=>t+v,0)/f.length;
+      if(!mejorSesion || p > mejorSesion.prom)
+        mejorSesion = {prom:p, total:f.reduce((t,v)=>t+v,0), flechas:f.length, dist:s.dist, fecha:s.date};
+    }
+  });
+
+  // impactos con coordenadas, si los hay
+  const marcas = [];
+  pl.forEach(({s,a}) => a.ends.forEach(e => e.forEach(c => {
+    const p = xy(c);
+    if(p) marcas.push({x:p.x, y:p.y, cara:s.cara || 122});
+  })));
+  let agrup = null;
+  if(marcas.length >= 25){
+    const cx = marcas.reduce((t,p)=>t+p.x,0)/marcas.length;
+    const cy = marcas.reduce((t,p)=>t+p.y,0)/marcas.length;
+    const sx = Math.sqrt(marcas.reduce((t,p)=>t+(p.x-cx)**2,0)/marcas.length);
+    const sy = Math.sqrt(marcas.reduce((t,p)=>t+(p.y-cy)**2,0)/marcas.length);
+    const caraProm = marcas.reduce((t,p)=>t+p.cara,0)/marcas.length;
+    agrup = {
+      n: marcas.length, cx, cy, sx, sy, cara: caraProm,
+      desvioCm: Math.hypot(cx,cy) * caraProm/2,
+      grupoCm: 2 * Math.hypot(sx,sy) * caraProm/2,   // ancho aproximado del grupo
+      sxCm: sx*caraProm/2, syCm: sy*caraProm/2,
+      marcas: marcas.slice(-180)
+    };
+  }
+
+  // evolución mes a mes
+  const meses = {};
+  pl.forEach(({s,a}) => {
+    const f = a.ends.flat().map(val); if(!f.length) return;
+    const k = String(s.date).slice(0,7);
+    const m2 = meses[k] = meses[k] || {suma:0, n:0, sesiones:0};
+    m2.suma += f.reduce((t,v)=>t+v,0); m2.n += f.length; m2.sesiones++;
+  });
+  const mensual = Object.keys(meses).sort().slice(-6)
+    .map(k => ({mes:k, prom:meses[k].suma/meses[k].n, sesiones:meses[k].sesiones}));
+
+  return { n, suma, prom, desv, curva, primeras, ultimas, dist, posiciones,
+           mejorSerie, mejorSesion, mensual, grupo: agrup,
+           entrenamiento, competencia, tendencia, recientes, diasDesde, varSesion,
+           proyeccion: prom*60,
            sesiones: pl.length,
            pctX: pct(v => v === 10), pct9: pct(v => v >= 9),
            pctBajo: pct(v => v <= 5 && v > 0), pctM: pct(v => v === 0),
@@ -1038,6 +1223,42 @@ function sugerencias(m){
     out.push({alta:true, t:"Rendís menos en competencia",
       d:`Entrenando promediás ${m.entrenamiento.toFixed(2)} y compitiendo ${m.competencia.toFixed(2)}. La diferencia es de manejo de presión, no de técnica. Simulá rondas completas con tiempo y puntaje anotado, y tirá delante de gente que te mire.`});
 
+  if(m.posiciones.length >= 3){
+    const p1 = m.posiciones[0], ult = m.posiciones[m.posiciones.length-1];
+    const resto = m.posiciones.slice(1).reduce((t,x)=>t+x.prom,0)/(m.posiciones.length-1);
+    if(p1.prom < resto - 0.4)
+      out.push({alta:false, t:"La primera flecha de cada serie es la más floja",
+        d:`Promedia ${p1.prom.toFixed(2)} contra ${resto.toFixed(2)} de las demás. Es falta de rutina previa: armá una secuencia fija antes de cada flecha, no solo antes de la serie, y respetala también en la primera.`});
+    const previas = m.posiciones.slice(0,-1).reduce((t,x)=>t+x.prom,0)/(m.posiciones.length-1);
+    if(ult.prom < previas - 0.4)
+      out.push({alta:false, t:"Aflojás en la última flecha de la serie",
+        d:`La última promedia ${ult.prom.toFixed(2)} contra ${previas.toFixed(2)} de las anteriores. Suele ser apuro por terminar. Tomate el mismo tiempo en esa que en la primera, y si venís cansado bajá a tres flechas por serie.`});
+  }
+
+  if(m.grupo){
+    const g = m.grupo;
+    if(g.desvioCm > g.cara*0.04){
+      const vert = g.cy < 0 ? "arriba" : "abajo";
+      const hor  = g.cx > 0 ? "a la derecha" : "a la izquierda";
+      out.push({alta:true, t:`Tu grupo cae ${vert} ${hor} del centro`,
+        d:`El centro de tus impactos está a ${g.desvioCm.toFixed(1)} cm del medio (${Math.abs(aCm(g.cx,g.cara)).toFixed(1)} cm ${hor}, ${Math.abs(aCm(g.cy,g.cara)).toFixed(1)} cm ${vert}). Eso es ajuste de mira, no técnica: movela hacia donde caen las flechas, de a poco, y volvé a medir con 18 flechas. Si agrupás bien, esto solo ya te sube el promedio.`});
+    }
+    if(g.syCm > g.sxCm*1.6)
+      out.push({alta:true, t:"Dispersión vertical",
+        d:`Tus flechas se abren ${(g.syCm*2).toFixed(1)} cm a lo alto contra ${(g.sxCm*2).toFixed(1)} cm a lo ancho. La apertura vertical casi siempre viene de la longitud de tiro: anclaje que se mueve, expansión que se corta o distinta presión de dedos. Trabajo de clicker y anclaje repetido a corta distancia.`});
+    else if(g.sxCm > g.syCm*1.6)
+      out.push({alta:true, t:"Dispersión horizontal",
+        d:`Se abren ${(g.sxCm*2).toFixed(1)} cm a lo ancho contra ${(g.syCm*2).toFixed(1)} cm a lo alto. La apertura lateral suele ser suelta o brazo de arco: revisá que la mano de cuerda salga hacia atrás sin desviarse y que el hombro del arco no ceda. Si tirás al aire libre, descontá el viento antes de sacar conclusiones.`});
+  }
+
+  if(m.varSesion !== null && m.varSesion > 0.8)
+    out.push({alta:true, t:"Muy distinto de un día para otro",
+      d:`Tus sesiones varían ${m.varSesion.toFixed(2)} puntos por flecha entre sí. Cuando el día a día pesa más que la técnica, casi siempre hay una variable de contexto: descanso, comida, horario o material que se mueve. Anotá en las notas de cada sesión cómo llegaste y en un mes vas a ver el patrón.`});
+
+  if(m.diasDesde !== null && m.diasDesde > 14)
+    out.push({alta:false, t:`Hace ${m.diasDesde} días que no tirás`,
+      d:"Después de dos semanas la técnica se resiente antes que el físico. Volvé con una sesión corta a media distancia, sin puntaje, antes de retomar el registro normal."});
+
   if(m.recientes < 4)
     out.push({alta:false, t:"Poca frecuencia",
       d:`Registraste ${m.recientes} sesiones en el último mes. Dos veces por semana sostenidas rinden más que una jornada larga cada quince días, sobre todo para fijar técnica.`});
@@ -1075,6 +1296,51 @@ function htmlStats(m, titulo, sub){
     return `<tr><td>${d} m</td><td>${x.sesiones}</td><td>${x.flechas}</td>
       <td>${(x.suma/x.flechas).toFixed(2)}</td></tr>`;
   }).join("");
+  const meses = m.mensual.length > 1 ? `
+    <div class="chart-head"><h2>Mes a mes</h2><em>promedio por flecha</em></div>
+    ${m.mensual.map(x => {
+      const [y,mm] = x.mes.split("-");
+      const nom = ["ene","feb","mar","abr","may","jun","jul","ago","set","oct","nov","dic"][+mm-1];
+      return `<div class="bar"><span>${nom}</span><div class="track">
+        <div class="fill" style="width:${(x.prom/10*100).toFixed(1)}%;background:var(--gold)"></div>
+      </div><span>${x.prom.toFixed(2)}</span></div>`;
+    }).join("")}` : "";
+
+  const pos = m.posiciones.length >= 3 ? `
+    <div class="chart-head"><h2>Por posición en la serie</h2><em>1ª flecha, 2ª…</em></div>
+    ${m.posiciones.map(p => `<div class="bar"><span>${p.pos}ª</span><div class="track">
+        <div class="fill" style="width:${(p.prom/10*100).toFixed(1)}%;background:var(--blue)"></div>
+      </div><span>${p.prom.toFixed(2)}</span></div>`).join("")}` : "";
+
+  const mapa = m.grupo ? `
+    <div class="chart-head"><h2>Dónde impactan</h2><em>${m.grupo.n} flechas</em></div>
+    <div class="mini">${svgCara(m.grupo.marcas, {chico:true, todos:true,
+      centro:{x:m.grupo.cx, y:m.grupo.cy}})}</div>
+    <table class="tabla" style="margin-top:10px">
+      <tr><td>Centro del grupo</td><td>${m.grupo.desvioCm.toFixed(1)} cm del medio</td></tr>
+      <tr><td>Ancho del grupo</td><td>${m.grupo.grupoCm.toFixed(1)} cm</td></tr>
+      <tr><td>Apertura vertical</td><td>${(m.grupo.syCm*2).toFixed(1)} cm</td></tr>
+      <tr><td>Apertura horizontal</td><td>${(m.grupo.sxCm*2).toFixed(1)} cm</td></tr>
+    </table>
+    <p class="hint" style="text-align:left;margin:8px 0 0">
+      La cruz verde es el centro de tus impactos. Si está lejos del medio, es la mira;
+      si está cerca pero las flechas se abren, es la ejecución.</p>` : "";
+
+  const recs = (m.mejorSerie || m.mejorSesion) ? `
+    <div class="chart-head"><h2>Récords</h2></div>
+    <table class="tabla">
+      ${m.mejorSerie ? `<tr><td>Mejor serie<br><span style="color:var(--muted);font-size:14px">
+        ${m.mejorSerie.dist} m · ${fmtDate(m.mejorSerie.fecha)}</span></td>
+        <td>${m.mejorSerie.total}/${m.mejorSerie.flechas*10}</td></tr>` : ""}
+      ${m.mejorSesion ? `<tr><td>Mejor sesión<br><span style="color:var(--muted);font-size:14px">
+        ${m.mejorSesion.dist} m · ${fmtDate(m.mejorSesion.fecha)}</span></td>
+        <td>${m.mejorSesion.prom.toFixed(2)}</td></tr>` : ""}
+      <tr><td>Ronda de 60 flechas<br><span style="color:var(--muted);font-size:14px">
+        proyección con tu promedio</span></td><td>${Math.round(m.proyeccion)}/600</td></tr>
+      ${m.varSesion !== null ? `<tr><td>Variación entre sesiones</td>
+        <td>${m.varSesion.toFixed(2)}</td></tr>` : ""}
+    </table>` : "";
+
   const curva = m.curva.length > 2 ? `
     <div class="chart-head"><h2>Por número de serie</h2><em>promedio por flecha</em></div>
     ${m.curva.map(c => `<div class="bar"><span>${c.serie}ª</span><div class="track">
@@ -1099,7 +1365,11 @@ function htmlStats(m, titulo, sub){
 
     <div class="chart-head"><h2>Dónde caen tus flechas</h2></div>
     ${m.distrib.filter(x => x.p > 0).map(x => barra(x.v, x.p)).join("")}
+    ${mapa}
+    ${pos}
     ${curva}
+    ${meses}
+    ${recs}
 
     <div class="chart-head"><h2>Por distancia</h2></div>
     <table class="tabla"><tr><th>Distancia</th><th>Sesiones</th><th>Flechas</th><th>Promedio</th></tr>
@@ -1254,8 +1524,13 @@ function renderAccount(motivo){
           : "Sin cuenta la app funciona igual, pero los datos quedan solo en este teléfono."}
         Con cuenta se copian al servidor del club y los recuperás en cualquier celular.</p>
       <button class="primary" id="ac-go" style="margin-top:20px">Entrar o crear cuenta</button>
+      <div class="chart-head"><h2>Respaldos</h2></div>
       <div class="tools"><button id="e1">Guardar respaldo</button>
-        <button id="e2">Exportar CSV</button><button id="e3">Restaurar</button></div>
+        <button id="e3">Levantar respaldo</button>
+        <button id="e2">Exportar CSV</button></div>
+      <p class="hint" style="text-align:left;margin:0">
+        Guardar te deja un archivo para mandarte por mail o WhatsApp. Levantar lo vuelve
+        a cargar en este teléfono, o en uno nuevo. Se fusiona con lo que ya tengas, no lo pisa.</p>
       <p class="hint" style="margin-top:18px">versión ${VERSION} ·
         <button id="upd2" style="color:var(--gold);text-decoration:underline">buscar actualización</button></p>`;
     $("ac-go").onclick = () => { $("a-namebox").classList.add("hidden"); show("auth"); };
@@ -1275,15 +1550,21 @@ function renderAccount(motivo){
           !navigator.onLine ? "Sin conexión" : pend ? pend + " sin subir" : "Todo sincronizado"}</span>
         <button class="sy" id="ac-sy2">Sincronizar</button>
       </div>
+      <div class="chart-head"><h2>Respaldos</h2></div>
       <div class="tools"><button id="e1">Guardar respaldo</button>
-        <button id="e2">Exportar CSV</button><button id="e3">Restaurar</button></div>
-      <p class="hint" style="text-align:left;margin:0">
-        El respaldo es un archivo con todo tu historial. Mandátelo por mail cada tanto.</p>
+        <button id="e3">Levantar respaldo</button>
+        <button id="e2">Exportar CSV</button></div>
+      <button class="ghost" id="e4" style="margin-top:9px">Bajar todo del servidor</button>
+      <p class="hint" style="text-align:left;margin:9px 0 0">
+        Guardar deja un archivo con todo tu historial para mandarte por mail. Levantar lo
+        vuelve a cargar acá o en un teléfono nuevo. Bajar del servidor recupera tus sesiones
+        desde tu cuenta, sin necesidad de archivo.</p>
       <button class="ghost" id="ac-out2" style="margin-top:26px">Cerrar sesión</button>
       <p class="hint" style="margin-top:18px">versión ${VERSION} ·
         <button id="upd2" style="color:var(--gold);text-decoration:underline">buscar actualización</button></p>`;
     $("ac-sy2").onclick = () => syncNow(false).then(() => renderAccount());
     $("ac-out2").onclick = () => { salir(); renderAccount(); };
+    $("e4").onclick = async () => { await syncNow(false); renderAccount(); };
   }
   $("e1").onclick = exportJson;
   $("e2").onclick = exportCsv;
@@ -1344,7 +1625,9 @@ $("start").onclick = () => {
   if(form.modo === "Grupo") form.nombres.forEach((n,i) => archers.push({id:"a"+i, name:n, ends:[]}));
   cur = { id:uid(), date:new Date().toISOString(), dist:form.dist, per:form.per,
           endsPlan:form.ends, place:form.place, note:"", archers, active:0,
-          tipo: form.tipo === "Competencia" ? "competencia" : "entrenamiento" };
+          tipo: form.tipo === "Competencia" ? "competencia" : "entrenamiento",
+          metodo: form.metodo === "Diana" ? "diana" : "teclado",
+          cara: form.metodo === "Diana" ? form.cara : null };
   renderShoot(); show("shoot");
 };
 $("go-resume").onclick = () => { renderShoot(); show("shoot"); };

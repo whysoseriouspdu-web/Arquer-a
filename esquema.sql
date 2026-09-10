@@ -36,6 +36,10 @@ create table if not exists sessions (
 alter table clubs    add column if not exists codigo text unique;
 alter table sessions add column if not exists tipo text not null default 'entrenamiento';
   -- tipo: entrenamiento | competencia
+alter table sessions add column if not exists metodo text not null default 'teclado';
+  -- metodo: teclado | diana
+alter table sessions add column if not exists cara int;
+  -- cara: diámetro en cm cuando se anota sobre la diana
 
 create table if not exists session_archers (
   id uuid primary key default gen_random_uuid(),
