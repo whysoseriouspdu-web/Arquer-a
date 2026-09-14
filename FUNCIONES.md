@@ -1,4 +1,4 @@
-# Qué hace la app — versión 10
+# Qué hace la app — versión 10.1
 
 ## Navegación
 
@@ -138,8 +138,10 @@ pantalla grande.
 1. El anotador crea una sesión grupal, carga los nombres y en **Cómo se anota**
    elige *Cada uno en su celular*.
 2. La app abre la sesión y muestra un **código de cinco caracteres** y un **QR**.
-3. Cada compañero escanea el QR, o entra a *Unirme a una sesión* y escribe el
-   código. Elige su nombre de la lista y ya puede cargar sus flechas.
+3. Cada compañero entra a *Unirme a una sesión* y tiene dos caminos: tocar
+   **Escanear el QR** y apuntar la cámara a la pantalla del anotador, o escribir
+   el código de cinco caracteres. Después elige su nombre de la lista y ya puede
+   cargar sus flechas.
 4. Para la pantalla grande se abre en la tele o la laptop el link del marcador.
    **No pide cuenta**: alcanza con tener el link.
 5. Cuando termina el entrenamiento, el anotador toca *Cerrar la sesión para
@@ -163,3 +165,17 @@ tipografía crece en pantallas grandes.
   estadísticas, sin que nadie tenga que cargar nada dos veces.
 - El QR se genera con un servicio externo, así que necesita internet en el
   momento de mostrarlo. El código de cinco caracteres siempre funciona igual.
+
+
+## Lector de QR
+
+Está dentro de *Unirme a una sesión*. Conviene usar ese, y no la cámara del
+sistema: el scanner del iPhone abre el link en Safari, fuera de la app instalada,
+y ahí la sesión iniciada es otra.
+
+Usa el lector nativo del navegador cuando existe, y si no, uno propio incluido en
+la app (jsQR, licencia Apache 2.0), así funciona igual en iPhone. Reconoce tanto
+el link completo como el código suelto. Si no hay permiso de cámara, lo dice y
+siempre queda la opción de escribir los cinco caracteres a mano.
+
+La cámara se apaga sola al salir de la pantalla o al encontrar el código.

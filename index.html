@@ -12,6 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="TAPURU">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- jsQR, Apache 2.0 — https://github.com/cozmo/jsQR -->
+<script src="jsqr.min.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -168,6 +170,11 @@
     .mk td.p{font-size:46px} .mk td.pr{font-size:26px;width:130px}
     .mk .sub{font-size:21px} .mk .cod{font-size:38px}
   }
+  .scan{position:relative;background:#000;border-radius:12px;overflow:hidden;margin-top:14px}
+  .scan video{width:100%;display:block;max-height:64vh;object-fit:cover}
+  .scan .mira{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  .scan .mira div{width:62%;aspect-ratio:1;border:2px solid rgba(255,255,255,.9);border-radius:14px;
+    box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
   .qr{background:#fff;padding:12px;border-radius:12px;display:block;margin:14px auto 0;width:210px}
   .codigo-vivo{background:var(--surface);border-radius:12px;padding:16px;text-align:center;margin-top:14px}
   .codigo-vivo b{display:block;font-size:40px;letter-spacing:.18em;font-weight:700;line-height:1.2}
@@ -404,7 +411,7 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
-const VERSION = "10.0";
+const VERSION = "10.1";
 const KEY_P = "arqueria.companeros";
 const KEY_E = "arqueria.equipos";
 const KEY_T = "arqueria.sesion_cuenta";
@@ -1781,10 +1788,96 @@ async function renderUnirme(cod){
     <input type="text" id="u-cod" value="${esc(cod || "")}" placeholder="ABC12"
       autocapitalize="characters" autocomplete="off">
     <button class="primary" id="u-buscar" style="margin-top:16px">Buscar</button>
+    <button class="ghost" id="u-scan" style="margin-top:9px">Escanear el QR</button>
+    <div id="u-cam"></div>
     <div id="u-res"></div>`;
   $("u-buscar").onclick = buscarSesion;
+  $("u-scan").onclick = escanearQR;
   show("unirme");
   if(cod) buscarSesion();
+}
+
+/* --- lector de QR con la cámara --- */
+let camStream = null, camRAF = null;
+function cerrarCamara(){
+  if(camRAF) cancelAnimationFrame(camRAF);
+  camRAF = null;
+  if(camStream){ camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  const c = $("u-cam"); if(c) c.innerHTML = "";
+}
+
+async function escanearQR(){
+  if(camStream) return cerrarCamara();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+    return toast("Este navegador no da acceso a la cámara. Escribí el código a mano.");
+
+  $("u-cam").innerHTML = `<div class="scan">
+      <video id="u-video" playsinline muted></video>
+      <div class="mira"><div></div></div>
+    </div>
+    <p class="hint" style="margin-top:8px">Apuntá al QR que muestra el anotador.</p>
+    <button class="ghost" id="u-stop" style="margin-top:6px">Cancelar</button>`;
+  $("u-stop").onclick = cerrarCamara;
+
+  const video = $("u-video");
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: {facingMode: {ideal: "environment"}}, audio: false});
+  } catch(e){
+    cerrarCamara();
+    return toast(e && e.name === "NotAllowedError"
+      ? "No diste permiso a la cámara. Podés escribir el código a mano."
+      : "No se pudo abrir la cámara. Escribí el código a mano.");
+  }
+  video.srcObject = camStream;
+  await video.play().catch(()=>{});
+
+  const lienzo = document.createElement("canvas");
+  const ctx = lienzo.getContext("2d", {willReadFrequently:true});
+  const detector = ("BarcodeDetector" in window)
+    ? new window.BarcodeDetector({formats:["qr_code"]}) : null;
+
+  const leer = async () => {
+    if(!camStream) return;
+    if(video.readyState === video.HAVE_ENOUGH_DATA){
+      let texto = null;
+      try{
+        if(detector){
+          const r = await detector.detect(video);
+          if(r && r.length) texto = r[0].rawValue;
+        } else if(window.jsQR){
+          const lado = Math.min(video.videoWidth, video.videoHeight);
+          lienzo.width = lienzo.height = Math.min(lado, 520);
+          ctx.drawImage(video,
+            (video.videoWidth - lado)/2, (video.videoHeight - lado)/2, lado, lado,
+            0, 0, lienzo.width, lienzo.height);
+          const d = ctx.getImageData(0, 0, lienzo.width, lienzo.height);
+          const r = window.jsQR(d.data, d.width, d.height, {inversionAttempts:"dontInvert"});
+          if(r) texto = r.data;
+        }
+      } catch {}
+      if(texto){
+        const cod = codigoDeTexto(texto);
+        if(cod){
+          if(navigator.vibrate) navigator.vibrate(30);
+          cerrarCamara();
+          $("u-cod").value = cod;
+          return buscarSesion();
+        }
+      }
+    }
+    camRAF = requestAnimationFrame(leer);
+  };
+  camRAF = requestAnimationFrame(leer);
+}
+
+// del QR puede venir el link completo o el código pelado
+function codigoDeTexto(t){
+  t = String(t || "").trim();
+  const m = t.match(/[?&]u=([A-Za-z0-9]{4,8})/);
+  if(m) return m[1].toUpperCase();
+  if(/^[A-Za-z0-9]{4,8}$/.test(t)) return t.toUpperCase();
+  return null;
 }
 
 async function buscarSesion(){
@@ -1830,6 +1923,7 @@ async function buscarSesion(){
             sincronizada:true };
     save(KEY_C, cur);
     toast("Listo, ya podés tirar");
+    cerrarCamara();
     renderShoot(); show("shoot");
   });
 }
@@ -2160,7 +2254,7 @@ $("go-resume").onclick = () => {
 };
 $("go-unirme").onclick = () => renderUnirme("");
 $("vivo-back").onclick = () => show("home");
-$("un-back").onclick = () => show("home");
+$("un-back").onclick = () => { cerrarCamara(); show("home"); };
 
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault(); deferredPrompt = e;
