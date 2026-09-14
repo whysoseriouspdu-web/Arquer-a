@@ -41,6 +41,32 @@ alter table sessions add column if not exists metodo text not null default 'tecl
 alter table sessions add column if not exists cara int;
   -- cara: diámetro en cm cuando se anota sobre la diana
 
+-- Configuraciones de material del arquero
+create table if not exists equipos (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null references profiles on delete cascade,
+  nombre text not null,
+  tipo text default 'recurvo',
+  pot_nominal numeric, pot_real numeric,
+  longitud_arco numeric, brace numeric,
+  fl_marca text, fl_modelo text, spine text,
+  fl_longitud numeric, fl_peso numeric, plumas text,
+  visor text, estabilizadores text, cuerda text,
+  notas text,
+  actualizado timestamptz default now()
+);
+create index if not exists ix_equipos_owner on equipos (owner);
+
+alter table sessions add column if not exists equipo_id uuid references equipos on delete set null;
+alter table sessions add column if not exists condiciones jsonb;
+alter table sessions add column if not exists codigo text;            -- para unirse en vivo
+alter table sessions add column if not exists estado text not null default 'cerrada';  -- abierta | cerrada
+create unique index if not exists ix_sessions_codigo on sessions (codigo) where codigo is not null;
+alter table session_archers add column if not exists actualizado timestamptz default now();
+alter table profiles add column if not exists lateralidad text;
+alter table profiles add column if not exists ojo_dominante text;
+alter table profiles add column if not exists longitud_tiro numeric;
+
 create table if not exists session_archers (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references sessions on delete cascade,
@@ -131,6 +157,7 @@ drop trigger if exists trg_session_club on sessions;
 create trigger trg_session_club before insert or update on sessions
   for each row execute function set_session_club();
 
+alter table equipos          enable row level security;
 alter table clubs            enable row level security;
 alter table profiles         enable row level security;
 alter table sessions         enable row level security;
@@ -144,7 +171,7 @@ begin
   for p in
     select policyname, tablename from pg_policies
     where schemaname = 'public'
-      and tablename in ('profiles','sessions','session_archers','clubs')
+      and tablename in ('profiles','sessions','session_archers','clubs','equipos')
   loop
     execute format('drop policy if exists %I on public.%I', p.policyname, p.tablename);
   end loop;
@@ -178,6 +205,15 @@ create policy "veo planillas que puedo ver" on session_archers for select
 create policy "manejo planillas de mis sesiones" on session_archers for all
   using      (soy_dueno_sesion(session_id))
   with check (soy_dueno_sesion(session_id));
+
+-- equipos: cada uno el suyo; el entrenador los ve para entender los números
+create policy "veo mis equipos" on equipos for select using (owner = auth.uid());
+create policy "el entrenador ve los equipos del club" on equipos for select
+  using (soy_entrenador() and exists (
+    select 1 from profiles p where p.id = equipos.owner and p.club_id = mi_club()));
+create policy "el superadmin ve los equipos" on equipos for select using (es_superadmin());
+create policy "manejo mis equipos" on equipos for all
+  using (owner = auth.uid()) with check (owner = auth.uid());
 
 -- clubes
 create policy "veo mi club" on clubs for select using (id = mi_club() or es_superadmin());
@@ -266,3 +302,95 @@ create or replace function mi_club_info()
          (select count(*) from profiles p where p.club_id = c.id)
     from clubs c where c.id = mi_club();
 $$;
+
+
+-- =====================================================================
+-- Sesiones grupales en vivo
+-- Cada arquero anota lo suyo desde su celular; el marcador se puede
+-- mostrar en una pantalla sin iniciar sesión, solo con el código.
+-- =====================================================================
+
+-- Datos de la sesión abierta, para quien va a unirse
+create or replace function sesion_por_codigo(p_codigo text)
+  returns table (id uuid, fecha timestamptz, distancia int, flechas_serie int,
+                 series_previstas int, metodo text, cara int, tipo text,
+                 anotador text, estado text)
+  language sql stable security definer set search_path = public as $$
+  select s.id, s.fecha, s.distancia, s.flechas_serie, s.series_previstas,
+         s.metodo, s.cara, s.tipo, p.nombre, s.estado
+    from sessions s join profiles p on p.id = s.owner
+   where s.codigo is not null and upper(s.codigo) = upper(trim(p_codigo));
+$$;
+
+-- Puestos de esa sesión: quién está libre y quién ya lo tomó
+create or replace function puestos(p_sesion uuid)
+  returns table (id uuid, nombre text, tomado boolean, mio boolean)
+  language sql stable security definer set search_path = public as $$
+  select sa.id, sa.nombre, sa.profile_id is not null, sa.profile_id = auth.uid()
+    from session_archers sa
+   where sa.session_id = p_sesion
+   order by sa.nombre;
+$$;
+
+-- Tomar un puesto libre
+create or replace function tomar_puesto(p_archer uuid)
+  returns uuid language plpgsql security definer set search_path = public as $$
+declare ses uuid; dueno uuid; est text;
+begin
+  if auth.uid() is null then raise exception 'Hay que iniciar sesión'; end if;
+  select sa.session_id, sa.profile_id into ses, dueno from session_archers sa where sa.id = p_archer;
+  if ses is null then raise exception 'Ese puesto no existe'; end if;
+  select s.estado into est from sessions s where s.id = ses;
+  if est <> 'abierta' then raise exception 'La sesión ya está cerrada'; end if;
+  if dueno is not null and dueno <> auth.uid() then raise exception 'Ese puesto ya lo tomó otro arquero'; end if;
+  if exists (select 1 from session_archers where session_id = ses
+             and profile_id = auth.uid() and id <> p_archer)
+    then raise exception 'Ya tenés un puesto en esta sesión'; end if;
+  update session_archers
+     set profile_id = auth.uid(),
+         nombre = coalesce((select nombre from profiles where id = auth.uid()), nombre),
+         actualizado = now()
+   where id = p_archer;
+  return ses;
+end $$;
+
+-- Guardar mis flechas. Solo toca mi propia planilla.
+create or replace function guardar_puesto(p_archer uuid, p_ends jsonb)
+  returns void language plpgsql security definer set search_path = public as $$
+declare ses uuid;
+begin
+  select sa.session_id into ses from session_archers sa
+   where sa.id = p_archer and sa.profile_id = auth.uid();
+  if ses is null then raise exception 'Ese puesto no es tuyo'; end if;
+  if (select estado from sessions where id = ses) <> 'abierta'
+    then raise exception 'La sesión ya está cerrada'; end if;
+  update session_archers set ends = p_ends, actualizado = now() where id = p_archer;
+  update sessions set actualizado = now() where id = ses;
+end $$;
+
+-- Marcador público por código: no pide cuenta, para mostrarlo en una pantalla
+create or replace function marcador(p_codigo text)
+  returns table (sesion uuid, distancia int, flechas_serie int, series_previstas int,
+                 estado text, anotador text, nombre text, ends jsonb, actualizado timestamptz)
+  language sql stable security definer set search_path = public as $$
+  select s.id, s.distancia, s.flechas_serie, s.series_previstas, s.estado,
+         p.nombre, sa.nombre, sa.ends, sa.actualizado
+    from sessions s
+    join profiles p on p.id = s.owner
+    join session_archers sa on sa.session_id = s.id
+   where s.codigo is not null and upper(s.codigo) = upper(trim(p_codigo))
+   order by sa.nombre;
+$$;
+
+-- Cerrar la sesión: deja de aceptar cargas y de aparecer por código
+create or replace function cerrar_sesion(p_sesion uuid)
+  returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from sessions where id = p_sesion and owner = auth.uid())
+    then raise exception 'No sos el anotador de esa sesión'; end if;
+  update sessions set estado = 'cerrada', actualizado = now() where id = p_sesion;
+end $$;
+
+-- el marcador se consulta sin cuenta, el resto no
+grant execute on function marcador(text) to anon;
+grant execute on function sesion_por_codigo(text) to anon;

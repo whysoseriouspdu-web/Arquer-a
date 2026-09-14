@@ -148,6 +148,30 @@
   .diana-wrap{background:var(--surface);border-radius:12px;padding:10px}
   .diana-tip{color:var(--muted);font-size:14.5px;text-align:center;margin:9px 0 0}
   .mini{background:var(--surface);border-radius:10px;padding:8px;margin-top:8px}
+  /* marcador para pantalla grande */
+  .mk{padding:20px 18px;min-height:100vh}
+  .mk h1{font-size:30px;margin-bottom:2px}
+  .mk .sub{color:var(--muted);font-size:16px;margin-bottom:16px}
+  .mk table{width:100%;border-collapse:collapse}
+  .mk th{text-align:left;color:var(--muted);font-weight:500;font-size:15px;
+    padding:8px 6px;border-bottom:1px solid var(--line)}
+  .mk td{padding:13px 6px;border-bottom:1px solid var(--line);font-size:23px;font-weight:600}
+  .mk td.n{color:var(--muted);font-size:17px;font-weight:400;width:34px}
+  .mk td.p{text-align:right;font-size:30px;font-weight:700;color:var(--gold)}
+  .mk td.pr{text-align:right;color:var(--muted);font-size:19px;font-weight:500;width:86px}
+  .mk tr.lider td.p{color:#2BE07A}
+  .mk .pie{color:var(--muted);font-size:15px;margin-top:18px;display:flex;
+    justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .mk .cod{font-size:26px;letter-spacing:.16em;font-weight:700;color:var(--text)}
+  @media (min-width:900px){
+    .mk h1{font-size:46px} .mk td{font-size:34px;padding:18px 8px}
+    .mk td.p{font-size:46px} .mk td.pr{font-size:26px;width:130px}
+    .mk .sub{font-size:21px} .mk .cod{font-size:38px}
+  }
+  .qr{background:#fff;padding:12px;border-radius:12px;display:block;margin:14px auto 0;width:210px}
+  .codigo-vivo{background:var(--surface);border-radius:12px;padding:16px;text-align:center;margin-top:14px}
+  .codigo-vivo b{display:block;font-size:40px;letter-spacing:.18em;font-weight:700;line-height:1.2}
+  .codigo-vivo small{color:var(--muted);font-size:14.5px}
   /* navegación inferior */
   body{padding-bottom:calc(78px + env(safe-area-inset-bottom))}
   .nav{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;
@@ -215,6 +239,7 @@
     </div>
     <button class="primary" id="go-new">Empezar sesión</button>
     <button class="ghost hidden" id="go-resume">Retomar sesión sin terminar</button>
+    <button class="ghost" id="go-unirme" style="margin-top:8px">Unirme a una sesión</button>
     <button class="ghost hidden" id="go-install" style="margin-top:8px;border-color:var(--gold);color:var(--gold)">Instalar en el celular</button>
 
     <div id="chart-box" class="hidden">
@@ -248,13 +273,18 @@
         <button id="add-name">Agregar</button>
       </div>
       <div class="people" id="people"></div>
+      <label>Cómo se anota</label><div class="opts" id="op-vivo"></div>
+      <p class="hint" id="vivo-tip" style="text-align:left;margin:8px 0 0"></p>
       <div id="sug-box" class="hidden">
         <p class="suggest">Habituales</p>
         <div class="people" id="sug"></div>
       </div>
     </div>
 
+    <div id="eq-box"><label>Equipo</label><div class="opts" id="op-equipo"></div></div>
     <label>Distancia</label><div class="opts" id="op-dist"></div>
+    <label>Lugar</label><div class="opts" id="op-lugar"></div>
+    <div id="viento-box"><label>Viento</label><div class="opts" id="op-viento"></div></div>
     <label>Flechas por serie</label><div class="opts" id="op-per"></div>
     <label>Series previstas</label><div class="opts" id="op-ends"></div>
     <label for="f-place">Lugar (opcional)</label>
@@ -316,6 +346,30 @@
   <div class="wrap" id="account-body" style="padding-top:22px"></div>
 </section>
 
+<section id="v-vivo" class="hidden">
+  <button class="back" id="vivo-back">← Volver</button>
+  <div class="wrap" id="vivo-body"></div>
+</section>
+
+<section id="v-marcador" class="hidden">
+  <div id="marcador-body"></div>
+</section>
+
+<section id="v-unirme" class="hidden">
+  <button class="back" id="un-back">← Volver</button>
+  <div class="wrap" id="unirme-body"></div>
+</section>
+
+<section id="v-equipo" class="hidden">
+  <button class="back" id="eq-back">← Mi cuenta</button>
+  <div class="wrap" id="equipo-body"></div>
+</section>
+
+<section id="v-equipo-form" class="hidden">
+  <button class="back" id="eqf-back">← Volver</button>
+  <div class="wrap" id="equipo-form"></div>
+</section>
+
 <section id="v-club" class="hidden">
   <div class="wrap" id="club-body" style="padding-top:22px"></div>
 </section>
@@ -350,8 +404,9 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
-const VERSION = "8.0";
+const VERSION = "10.0";
 const KEY_P = "arqueria.companeros";
+const KEY_E = "arqueria.equipos";
 const KEY_T = "arqueria.sesion_cuenta";
 const KEY_D = "arqueria.borradas";
 const KEY_L = "arqueria.ultima_sync";
@@ -380,7 +435,7 @@ const aCm = (v, cara) => v * (cara/2);
 const $ = id => document.getElementById(id);
 const esc = t => String(t).replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
 
-let sessions = [], cur = null, deferredPrompt = null;
+let sessions = [], equipos = [], cur = null, deferredPrompt = null;
 
 /* ---------- almacenamiento: IndexedDB con espejo en localStorage ---------- */
 let db = null;
@@ -465,14 +520,16 @@ const xCount = a => flat(a).filter(c => c === "X" || c === "10").length;
 const shots = s => archersOf(s).reduce((t,a) => t + flat(a).length, 0);
 const fmtDate = iso => new Date(iso).toLocaleDateString("es",{day:"2-digit",month:"short"}).replace(".","");
 
-const VISTAS = ["home","new","shoot","detail","auth","club","stats","account"];
+const VISTAS = ["home","new","shoot","detail","auth","club","stats","account","equipo","equipo-form",
+                "vivo","marcador","unirme"];
 const RAIZ = {home:"home", new:"home", shoot:"home", detail:"home",
-              auth:"account", account:"account", club:"club", stats:"stats"};
+              auth:"account", account:"account", equipo:"account", "equipo-form":"account",
+              club:"club", stats:"stats", vivo:"home", marcador:"home", unirme:"home"};
 function show(v){
   VISTAS.forEach(n => $("v-"+n).classList.toggle("hidden", n !== v));
   document.querySelectorAll("#nav button").forEach(b =>
     b.setAttribute("aria-pressed", b.dataset.v === RAIZ[v]));
-  $("nav").classList.toggle("hidden", v === "shoot");   // sin distracciones mientras tirás
+  $("nav").classList.toggle("hidden", v === "shoot" || v === "marcador");
   window.scrollTo(0,0);
 }
 document.querySelectorAll("#nav button").forEach(b => b.onclick = () => {
@@ -531,7 +588,8 @@ function renderChart(mias){
 }
 
 /* ---------- nueva sesión ---------- */
-const form = { tipo:"Entrenamiento", metodo:"Teclado", cara:122,
+const form = { tipo:"Entrenamiento", metodo:"Teclado", cara:122, equipoId:null, vivo:"Anoto yo a todos",
+               lugar:"Exterior", viento:"Sin viento",
                modo:"Solo yo", dist:18, per:6, ends:10, place:"", nombres:[] };
 
 function chips(host, values, field, suffix=""){
@@ -545,7 +603,23 @@ function chips(host, values, field, suffix=""){
       chips(host, values, field, suffix);
       if(field === "modo")   $("group-box").classList.toggle("hidden", v !== "Grupo");
       if(field === "metodo") $("cara-box").classList.toggle("hidden", v !== "Diana");
+      if(field === "lugar")  $("viento-box").classList.toggle("hidden", v !== "Exterior");
+      if(field === "vivo")   renderNew();
     };
+    el.appendChild(b);
+  });
+}
+function chipsEquipo(){
+  const box = $("eq-box"), el = $("op-equipo");
+  box.classList.toggle("hidden", !equipos.length);
+  if(!equipos.length) return;
+  if(!equipos.some(e => e.id === form.equipoId)) form.equipoId = equipos[0].id;
+  el.innerHTML = "";
+  equipos.forEach(e => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.textContent = e.nombre;
+    b.setAttribute("aria-pressed", form.equipoId === e.id);
+    b.onclick = () => { form.equipoId = e.id; chipsEquipo(); };
     el.appendChild(b);
   });
 }
@@ -603,10 +677,18 @@ function addName(n){
 function renderNew(){
   chips("op-tipo",["Entrenamiento","Competencia"],"tipo");
   chips("op-metodo",["Teclado","Diana"],"metodo");
+  chips("op-vivo",["Anoto yo a todos","Cada uno en su celular"],"vivo");
+  $("vivo-tip").textContent = form.vivo === "Cada uno en su celular"
+    ? "Se genera un código y un QR. Cada compañero se une desde su celular y carga sus propias flechas. Necesita cuenta y conexión."
+    : "Vos cargás las flechas de todos desde este teléfono, como hasta ahora.";
   chips("op-cara",CARAS,"cara"," cm");
   $("cara-box").classList.toggle("hidden", form.metodo !== "Diana");
   chips("op-modo",["Solo yo","Grupo"],"modo");
+  chipsEquipo();
   chipsDist();
+  chips("op-lugar",["Exterior","Bajo techo"],"lugar");
+  chips("op-viento",["Sin viento","Leve","Moderado","Fuerte"],"viento");
+  $("viento-box").classList.toggle("hidden", form.lugar !== "Exterior");
   chips("op-per",[3,6],"per");
   chips("op-ends",[6,10,12,20],"ends");
   $("group-box").classList.toggle("hidden", form.modo !== "Grupo");
@@ -720,6 +802,7 @@ function addArrow(flecha){
     cur.active = (cur.active + 1) % cur.archers.length;   // pasa al siguiente arquero
   }
   renderShoot();
+  if(cur.vivo) subirPuesto();
 }
 function undo(){
   const a = active();
@@ -734,6 +817,7 @@ function undo(){
   last.pop();
   if(!last.length) a.ends.pop();
   renderShoot();
+  if(cur.vivo) subirPuesto();
 }
 function buildPad(){
   const pad = $("pad");
@@ -745,6 +829,17 @@ function buildPad(){
   });
 }
 async function finish(exit){
+  if(cur.vivo){
+    if(cur.puesto) await rpc("guardar_puesto", {p_archer: cur.puesto, p_ends: active().ends}).catch(()=>{});
+    if(cur.invitado){
+      const cod = cur.codigo;
+      cur = null; wipe(KEY_C);
+      toast("Tus flechas quedaron guardadas");
+      await syncNow(true);            // la sesión entra en mi historial
+      renderHome(); return abrirMarcador(cod);
+    }
+    return renderVivo();              // el anotador vuelve al panel para cerrarla
+  }
   if(!shots(cur)){ cur = null; wipe(KEY_C); renderHome(); show("home"); return; }
   if(!exit){
     const note = await ask({title:"Terminar sesión", text:"Podés dejar una nota.", input:true, value:cur.note, ok:"Guardar"});
@@ -799,7 +894,11 @@ function renderDetail(id){
   $("det-body").innerHTML = `
     <h1 style="font-size:25px">${new Date(s.date).toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"})}</h1>
     <p style="color:var(--muted);margin:4px 0 16px">${s.dist} m · ${s.per} flechas por serie${
-      arqs.length > 1 ? ` · ${arqs.length} arqueros` : ""}${s.place ? " · " + esc(s.place) : ""}</p>
+      arqs.length > 1 ? ` · ${arqs.length} arqueros` : ""}${s.place ? " · " + esc(s.place) : ""}${
+      s.equipoNombre ? " · " + esc(s.equipoNombre) : ""}${
+      s.cond && s.cond.lugar ? " · " + esc(s.cond.lugar.toLowerCase()) : ""}${
+      s.cond && s.cond.viento && s.cond.viento !== "Sin viento"
+        ? " · viento " + esc(s.cond.viento.toLowerCase()) : ""}</p>
     <div class="summary">
       <div><b>${totalOf(yo)}</b><small>mis puntos</small></div>
       <div><b>${avgOf(yo).toFixed(2)}</b><small>por flecha</small></div>
@@ -813,9 +912,9 @@ function renderDetail(id){
     const era = sessions.find(x => x.id === id);
     sessions = sessions.filter(x => x.id !== id);
     save(KEY_S, sessions);
-    if(era && era.sincronizada) save(KEY_D, [...(load(KEY_D) || []), id]);
-    syncNow(true);
+    if(era && era.sincronizada && auth) save(KEY_D, [...(load(KEY_D) || []), id]);
     toast("Sesión borrada");
+    if(auth) syncNow(false);
     renderHome(); show("home");
   };
   show("detail");
@@ -876,6 +975,12 @@ $("file").onchange = async e => {
 
 
 /* ================= cuenta y sincronización ================= */
+function msgErr(e){
+  const t = (e && e.message) || "";
+  const m = t.match(/"message":"([^"]+)"/);
+  return m ? m[1] : (t.slice(0,70) || "No se pudo");
+}
+
 let auth = null;          // {access_token, refresh_token, expires_at, user:{id,email}, nombre}
 let syncing = false;
 
@@ -958,6 +1063,8 @@ function aFila(s){
            flechas_serie:s.per, series_previstas:s.endsPlan || null,
            lugar:s.place || null, nota:s.note || null, tipo:s.tipo || 'entrenamiento',
            metodo:s.metodo || 'teclado', cara:s.cara || null,
+           equipo_id: (equipos.some(e => e.id === s.equipoId) ? s.equipoId : null),
+           condiciones: s.cond || null,
            actualizado:s.actualizado || new Date().toISOString() };
 }
 function deFila(f){
@@ -965,7 +1072,8 @@ function deFila(f){
     id:a.id, name:a.nombre, me:a.profile_id === auth.user.id, ends:a.ends || []}));
   if(!arqs.some(a => a.me) && arqs.length) arqs[0].me = true;
   return { id:f.id, date:f.fecha, dist:f.distancia, per:f.flechas_serie, tipo:f.tipo,
-           metodo:f.metodo, cara:f.cara,
+           metodo:f.metodo, cara:f.cara, equipoId:f.equipo_id, cond:f.condiciones,
+           equipoNombre:(equipos.find(e => e.id === f.equipo_id) || {}).nombre || null,
            endsPlan:f.series_previstas, place:f.lugar || "", note:f.nota || "",
            actualizado:f.actualizado, archers:arqs, sincronizada:true };
 }
@@ -976,16 +1084,47 @@ async function syncNow(silencioso){
   if(!navigator.onLine){ if(!silencioso) toast("Sin conexión. Se sube cuando vuelva."); return renderAcct(); }
   syncing = true; renderAcct();
   try{
-    // 1. borradas
+    // 1. borradas: si el servidor rechaza, la lápida queda para reintentar
     const borradas = load(KEY_D) || [];
+    const fallidas = [];
     for(const id of borradas.slice()){
-      try{ await api("/rest/v1/sessions?id=eq." + id, {method:"DELETE"}); } catch {}
+      try{
+        await api("/rest/v1/sessions?id=eq." + id, {method:"DELETE"});
+      } catch(e){
+        fallidas.push(id);
+        if(!silencioso) toast("No se pudo borrar en el servidor: " + msgErr(e));
+      }
       borradas.splice(borradas.indexOf(id), 1);
     }
-    save(KEY_D, borradas);
+    save(KEY_D, fallidas);
+
+    // 2a. equipos, antes que las sesiones que los referencian
+    for(const e of equipos.filter(x => !x.sincronizada)){
+      await api("/rest/v1/equipos?on_conflict=id", {method:"POST",
+        headers:{Prefer:"resolution=merge-duplicates,return=minimal"},
+        body: JSON.stringify({
+          id:e.id, owner:auth.user.id, nombre:e.nombre, tipo:e.tipo,
+          pot_nominal:e.potNominal, pot_real:e.potReal, longitud_arco:e.longitudArco,
+          brace:e.brace, fl_marca:e.flMarca, fl_modelo:e.flModelo, spine:e.spine,
+          fl_longitud:e.flLong, fl_peso:e.flPeso, plumas:e.plumas, visor:e.visor,
+          estabilizadores:e.estab, cuerda:e.cuerda, notas:e.notas,
+          actualizado:e.actualizado || new Date().toISOString()})});
+      e.sincronizada = true;
+    }
+    save(KEY_E, equipos);
+    const eqRem = await api("/rest/v1/equipos?select=*&limit=200");
+    (eqRem || []).forEach(f => {
+      if(equipos.some(e => e.id === f.id)) return;
+      equipos.push({id:f.id, nombre:f.nombre, tipo:f.tipo, potNominal:f.pot_nominal,
+        potReal:f.pot_real, longitudArco:f.longitud_arco, brace:f.brace, flMarca:f.fl_marca,
+        flModelo:f.fl_modelo, spine:f.spine, flLong:f.fl_longitud, flPeso:f.fl_peso,
+        plumas:f.plumas, visor:f.visor, estab:f.estabilizadores, cuerda:f.cuerda,
+        notas:f.notas, actualizado:f.actualizado, sincronizada:true});
+    });
+    save(KEY_E, equipos);
 
     // 2. subir lo que falta
-    for(const s of sessions.filter(x => !x.sincronizada)){
+    for(const s of sessions.filter(x => !x.sincronizada && !x.vivo)){
       await api("/rest/v1/sessions?on_conflict=id", {method:"POST",
         headers:{Prefer:"resolution=merge-duplicates,return=minimal"},
         body: JSON.stringify(aFila(s))});
@@ -1000,8 +1139,10 @@ async function syncNow(silencioso){
 
     // 3. bajar lo que no tengo
     const remotas = await api("/rest/v1/sessions?select=*,session_archers(*)&order=fecha.desc&limit=500");
+    const pendientesBorrar = new Set(load(KEY_D) || []);
     let nuevas = 0;
     (remotas || []).forEach(f => {
+      if(pendientesBorrar.has(f.id)) return;   // la estoy borrando, no la revivo
       const local = sessions.find(x => x.id === f.id);
       const r = deFila(f);
       if(!local){ sessions.push(r); nuevas++; }
@@ -1144,6 +1285,26 @@ function analizar(pl){
     }
   });
 
+  // rendimiento según la configuración de material
+  const eq = {};
+  pl.forEach(({s,a}) => {
+    const f = a.ends.flat().map(val); if(!f.length) return;
+    const k = s.equipoNombre || "Sin especificar";
+    const x = eq[k] = eq[k] || {suma:0, n:0, sesiones:0, desde:s.date, hasta:s.date};
+    x.suma += f.reduce((t,v)=>t+v,0); x.n += f.length; x.sesiones++;
+    if(s.date < x.desde) x.desde = s.date;
+    if(s.date > x.hasta) x.hasta = s.date;
+  });
+  const porEquipo = Object.keys(eq).filter(k => eq[k].n >= 36)
+    .map(k => ({nombre:k, prom:eq[k].suma/eq[k].n, n:eq[k].n,
+                sesiones:eq[k].sesiones, desde:eq[k].desde, hasta:eq[k].hasta}))
+    .sort((a,b) => b.prom - a.prom);
+
+  // cuánto del registro fue con viento, para no culpar a la técnica de más
+  const conViento = pl.filter(p => p.s.cond && p.s.cond.viento &&
+                                   p.s.cond.viento !== "Sin viento").length;
+  const propViento = pl.length ? conViento/pl.length : 0;
+
   // impactos con coordenadas, si los hay
   const marcas = [];
   pl.forEach(({s,a}) => a.ends.forEach(e => e.forEach(c => {
@@ -1178,7 +1339,7 @@ function analizar(pl){
     .map(k => ({mes:k, prom:meses[k].suma/meses[k].n, sesiones:meses[k].sesiones}));
 
   return { n, suma, prom, desv, curva, primeras, ultimas, dist, posiciones,
-           mejorSerie, mejorSesion, mensual, grupo: agrup,
+           mejorSerie, mejorSesion, mensual, grupo: agrup, porEquipo, propViento,
            entrenamiento, competencia, tendencia, recientes, diasDesde, varSesion,
            proyeccion: prom*60,
            sesiones: pl.length,
@@ -1248,7 +1409,15 @@ function sugerencias(m){
         d:`Tus flechas se abren ${(g.syCm*2).toFixed(1)} cm a lo alto contra ${(g.sxCm*2).toFixed(1)} cm a lo ancho. La apertura vertical casi siempre viene de la longitud de tiro: anclaje que se mueve, expansión que se corta o distinta presión de dedos. Trabajo de clicker y anclaje repetido a corta distancia.`});
     else if(g.sxCm > g.syCm*1.6)
       out.push({alta:true, t:"Dispersión horizontal",
-        d:`Se abren ${(g.sxCm*2).toFixed(1)} cm a lo ancho contra ${(g.syCm*2).toFixed(1)} cm a lo alto. La apertura lateral suele ser suelta o brazo de arco: revisá que la mano de cuerda salga hacia atrás sin desviarse y que el hombro del arco no ceda. Si tirás al aire libre, descontá el viento antes de sacar conclusiones.`});
+        d:`Se abren ${(g.sxCm*2).toFixed(1)} cm a lo ancho contra ${(g.syCm*2).toFixed(1)} cm a lo alto. La apertura lateral suele ser suelta o brazo de arco: revisá que la mano de cuerda salga hacia atrás sin desviarse y que el hombro del arco no ceda.` +
+           (m.propViento > 0.4 ? ` Ojo: el ${Math.round(m.propViento*100)}% de tus sesiones fueron con viento, así que buena parte de esta apertura puede ser del clima y no tuya. Para confirmarlo, medí una tanda bajo techo o sin viento.` : "")});
+  }
+
+  if(m.porEquipo.length >= 2){
+    const mejor = m.porEquipo[0], peor = m.porEquipo[m.porEquipo.length-1];
+    if(mejor.prom - peor.prom > 0.3)
+      out.push({alta:false, t:`Rendís mejor con ${mejor.nombre}`,
+        d:`Con ${mejor.nombre} promediás ${mejor.prom.toFixed(2)} sobre ${mejor.n} flechas, y con ${peor.nombre} ${peor.prom.toFixed(2)} sobre ${peor.n}. Antes de darlo por cerrado fijate si la diferencia no viene de la distancia o del momento del año, pero si tirás lo mismo con las dos, el material está diciendo algo.`});
   }
 
   if(m.varSesion !== null && m.varSesion > 0.8)
@@ -1326,6 +1495,12 @@ function htmlStats(m, titulo, sub){
       La cruz verde es el centro de tus impactos. Si está lejos del medio, es la mira;
       si está cerca pero las flechas se abren, es la ejecución.</p>` : "";
 
+  const equipoTabla = m.porEquipo.length ? `
+    <div class="chart-head"><h2>Por equipo</h2><em>promedio por flecha</em></div>
+    <table class="tabla"><tr><th>Configuración</th><th>Sesiones</th><th>Flechas</th><th>Promedio</th></tr>
+      ${m.porEquipo.map(e => `<tr><td>${esc(e.nombre)}</td><td>${e.sesiones}</td>
+        <td>${e.n}</td><td>${e.prom.toFixed(2)}</td></tr>`).join("")}</table>` : "";
+
   const recs = (m.mejorSerie || m.mejorSesion) ? `
     <div class="chart-head"><h2>Récords</h2></div>
     <table class="tabla">
@@ -1370,6 +1545,8 @@ function htmlStats(m, titulo, sub){
     ${curva}
     ${meses}
     ${recs}
+
+    ${equipoTabla}
 
     <div class="chart-head"><h2>Por distancia</h2></div>
     <table class="tabla"><tr><th>Distancia</th><th>Sesiones</th><th>Flechas</th><th>Promedio</th></tr>
@@ -1416,6 +1593,345 @@ function verArquero(pid, nombre){
   show("stats");
 }
 
+
+/* ================= sesiones en vivo =================
+   El anotador crea la sesión con un código corto. Cada compañero se une
+   desde su celular y carga sus propias flechas; el marcador se puede abrir
+   en cualquier pantalla con el link, sin iniciar sesión.               */
+
+const ALFA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // sin letras que se confundan
+const codigoCorto = () => Array.from({length:5}, () =>
+  ALFA[Math.floor(Math.random()*ALFA.length)]).join("");
+const baseUrl = () => location.origin + location.pathname.replace(/[^/]*$/, "");
+const linkMarcador = c => baseUrl() + "?m=" + c;
+const linkUnirse   = c => baseUrl() + "?u=" + c;
+const qrSrc = txt => "https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=8&data=" +
+  encodeURIComponent(txt);
+
+/* --- el anotador crea la sesión en el servidor --- */
+async function crearEnVivo(){
+  if(!auth) { toast("Para una sesión en vivo necesitás cuenta"); return renderAccount(); }
+  if(!navigator.onLine) return toast("Hace falta conexión para abrir una sesión en vivo");
+  const cod = codigoCorto();
+  const ses = {
+    id: uid(), owner: auth.user.id,
+    fecha: new Date().toISOString(), distancia: form.dist, flechas_serie: form.per,
+    series_previstas: form.ends, lugar: form.place || null,
+    tipo: form.tipo === "Competencia" ? "competencia" : "entrenamiento",
+    metodo: form.metodo === "Diana" ? "diana" : "teclado",
+    cara: form.metodo === "Diana" ? form.cara : null,
+    condiciones: { lugar: form.lugar, viento: form.lugar === "Exterior" ? form.viento : null },
+    equipo_id: (equipos.some(e => e.id === form.equipoId) ? form.equipoId : null),
+    codigo: cod, estado: "abierta", actualizado: new Date().toISOString()
+  };
+  try{
+    await api("/rest/v1/sessions", {method:"POST", headers:{Prefer:"return=minimal"},
+      body: JSON.stringify(ses)});
+    const filas = [{session_id:ses.id, profile_id:auth.user.id, nombre:auth.nombre || "Yo", ends:[]}]
+      .concat(form.nombres.map(n => ({session_id:ses.id, profile_id:null, nombre:n, ends:[]})));
+    await api("/rest/v1/session_archers", {method:"POST", headers:{Prefer:"return=minimal"},
+      body: JSON.stringify(filas)});
+  } catch(e){ return toast("No se pudo abrir: " + msgErr(e)); }
+
+  // mi propio puesto, para cargar mis flechas
+  const mios = await api("/rest/v1/session_archers?select=id&session_id=eq." + ses.id +
+                         "&profile_id=eq." + auth.user.id);
+  cur = { id:ses.id, date:ses.fecha, dist:ses.distancia, per:ses.flechas_serie,
+          endsPlan:ses.series_previstas, place:form.place, note:"", active:0,
+          tipo:ses.tipo, metodo:ses.metodo, cara:ses.cara, cond:ses.condiciones,
+          equipoId:ses.equipo_id, equipoNombre:(equipos.find(e => e.id === ses.equipo_id) || {}).nombre || null,
+          archers:[{id:"me", name:auth.nombre || "Yo", me:true, ends:[]}],
+          vivo:true, codigo:cod, puesto:(mios && mios[0] || {}).id || null,
+          sincronizada:true };
+  save(KEY_C, cur);
+  renderVivo();
+}
+
+function renderVivo(){
+  const c = cur.codigo;
+  $("vivo-body").innerHTML = `
+    <h1 style="font-size:25px">Sesión en vivo abierta</h1>
+    <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+      ${cur.dist} m · ${cur.per} flechas por serie · ${cur.metodo === "diana" ? "diana táctil" : "teclado"}</p>
+    <div class="codigo-vivo"><small>Código para unirse</small><b>${c}</b>
+      <small>o que escaneen el QR</small></div>
+    <img class="qr" src="${qrSrc(linkUnirse(c))}" alt="QR para unirse">
+    <button class="ghost" id="v-copiar" style="margin-top:12px">Copiar link para WhatsApp</button>
+    <button class="ghost" id="v-marcador" style="margin-top:9px">Ver el marcador</button>
+    <p class="hint" style="text-align:left;margin-top:14px">
+      Para la pantalla grande, abrí en la tele o la laptop:<br>
+      <span style="color:var(--text);word-break:break-all">${linkMarcador(c)}</span><br>
+      No pide cuenta: cualquiera con ese link ve el marcador.</p>
+    <button class="primary" id="v-tirar" style="margin-top:22px">Empezar a tirar</button>
+    <button class="danger" id="v-cerrar">Cerrar la sesión para todos</button>`;
+
+  $("v-copiar").onclick = async () => {
+    const txt = `Sumate al entrenamiento: ${linkUnirse(c)}\nO entrá el código ${c} en la app.`;
+    try{
+      if(navigator.share) await navigator.share({text:txt});
+      else { await navigator.clipboard.writeText(txt); toast("Link copiado"); }
+    } catch(e){ if(e && e.name !== "AbortError") toast("No se pudo compartir"); }
+  };
+  $("v-marcador").onclick = () => abrirMarcador(c);
+  $("v-tirar").onclick = () => { renderShoot(); show("shoot"); };
+  $("v-cerrar").onclick = () => cerrarVivo();
+  show("vivo");
+}
+
+/* --- mandar mis flechas al servidor, sin saturar --- */
+let pushTimer = null;
+function subirPuesto(){
+  if(!cur || !cur.vivo || !cur.puesto || !auth) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    try{ await rpc("guardar_puesto", {p_archer: cur.puesto, p_ends: active().ends}); }
+    catch(e){ /* si falla, el próximo intento lo reintenta con todo */ }
+  }, 900);
+}
+
+/* --- cerrar: nadie más carga y me traigo todo --- */
+async function cerrarVivo(){
+  if(!await ask({title:"¿Cerrar la sesión?",
+    text:"Nadie va a poder seguir cargando flechas con ese código.", ok:"Cerrar"})) return;
+  try{
+    await rpc("guardar_puesto", {p_archer: cur.puesto, p_ends: active().ends}).catch(()=>{});
+    await rpc("cerrar_sesion", {p_sesion: cur.id});
+  } catch(e){ return toast("No se pudo cerrar: " + msgErr(e)); }
+  const id = cur.id;
+  cur = null; wipe(KEY_C);
+  toast("Sesión cerrada");
+  await syncNow(true);            // baja la versión final con todos los arqueros
+  const s = sessions.find(x => x.id === id);
+  renderHome();
+  if(s) renderDetail(id); else show("home");
+}
+
+/* --- marcador, con actualización automática --- */
+let mkTimer = null, mkCodigo = null;
+async function abrirMarcador(cod){
+  mkCodigo = cod;
+  show("marcador");
+  await pintarMarcador();
+  clearInterval(mkTimer);
+  mkTimer = setInterval(pintarMarcador, 5000);
+}
+function cerrarMarcador(){ clearInterval(mkTimer); mkTimer = null; mkCodigo = null; }
+
+async function pintarMarcador(){
+  let filas;
+  try{ filas = await rpc("marcador", {p_codigo: mkCodigo}); }
+  catch(e){
+    $("marcador-body").innerHTML = `<div class="mk"><h1>Marcador</h1>
+      <p class="sub">No se pudo leer la sesión: ${esc(msgErr(e))}</p>
+      <button class="ghost" id="mk-salir">Volver</button></div>`;
+    $("mk-salir").onclick = () => { cerrarMarcador(); show("home"); };
+    return;
+  }
+  if(!filas || !filas.length){
+    $("marcador-body").innerHTML = `<div class="mk"><h1>Marcador</h1>
+      <p class="sub">No hay ninguna sesión con el código ${esc(mkCodigo)}.</p>
+      <button class="ghost" id="mk-salir">Volver</button></div>`;
+    $("mk-salir").onclick = () => { cerrarMarcador(); show("home"); };
+    return;
+  }
+  const cab = filas[0];
+  const arqueros = filas.map(f => {
+    const ends = f.ends || [];
+    const flechas = ends.flat();
+    const total = flechas.reduce((t,c) => t + val(c), 0);
+    return { nombre:f.nombre, total, flechas:flechas.length,
+             prom: flechas.length ? total/flechas.length : 0,
+             serie: ends.length };
+  }).sort((a,b) => b.total - a.total);
+
+  const filasHtml = arqueros.map((a,i) => `
+    <tr class="${i === 0 && a.total > 0 ? "lider" : ""}">
+      <td class="n">${i+1}</td>
+      <td>${esc(a.nombre)}</td>
+      <td class="pr">${a.flechas ? a.prom.toFixed(2) : "—"}</td>
+      <td class="pr">${a.serie}/${cab.series_previstas || "—"}</td>
+      <td class="p">${a.total}</td>
+    </tr>`).join("");
+
+  $("marcador-body").innerHTML = `<div class="mk">
+    <h1>${esc(cab.anotador)} · ${cab.distancia} m</h1>
+    <p class="sub">${cab.estado === "abierta" ? "Sesión en curso" : "Sesión cerrada"} ·
+      ${cab.flechas_serie} flechas por serie</p>
+    <table>
+      <tr><th></th><th>Arquero</th><th style="text-align:right">Promedio</th>
+          <th style="text-align:right">Serie</th><th style="text-align:right">Puntos</th></tr>
+      ${filasHtml}
+    </table>
+    <div class="pie">
+      <span>Para unirse: código <span class="cod">${esc(mkCodigo)}</span></span>
+      <span>Se actualiza solo · ${new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"})}</span>
+    </div>
+    <button class="ghost" id="mk-salir" style="margin-top:18px;max-width:220px">Salir del marcador</button>
+  </div>`;
+  $("mk-salir").onclick = () => { cerrarMarcador(); show("home"); };
+}
+
+/* --- unirse a una sesión --- */
+async function renderUnirme(cod){
+  $("unirme-body").innerHTML = `
+    <h1 style="font-size:25px">Unirme a una sesión</h1>
+    <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+      Escribí el código que te pasó el anotador, o escaneá su QR.</p>
+    <label for="u-cod">Código</label>
+    <input type="text" id="u-cod" value="${esc(cod || "")}" placeholder="ABC12"
+      autocapitalize="characters" autocomplete="off">
+    <button class="primary" id="u-buscar" style="margin-top:16px">Buscar</button>
+    <div id="u-res"></div>`;
+  $("u-buscar").onclick = buscarSesion;
+  show("unirme");
+  if(cod) buscarSesion();
+}
+
+async function buscarSesion(){
+  const cod = ($("u-cod").value || "").trim();
+  if(!cod) return toast("Falta el código");
+  if(!auth){ toast("Primero entrá con tu cuenta"); return renderAccount(); }
+  let ses;
+  try{ ses = (await rpc("sesion_por_codigo", {p_codigo: cod}) || [])[0]; }
+  catch(e){ return toast(msgErr(e)); }
+  if(!ses) return toast("No hay ninguna sesión con ese código");
+  if(ses.estado !== "abierta") return toast("Esa sesión ya está cerrada");
+
+  let ps = [];
+  try{ ps = await rpc("puestos", {p_sesion: ses.id}) || []; }
+  catch(e){ return toast(msgErr(e)); }
+
+  $("u-res").innerHTML = `
+    <div class="chart-head"><h2>${esc(ses.anotador)} · ${ses.distancia} m</h2></div>
+    <p style="color:var(--muted);margin:0 0 6px;font-size:15px">
+      ${ses.flechas_serie} flechas por serie · ${ses.metodo === "diana" ? "diana táctil" : "teclado"}</p>
+    <p style="color:var(--muted);font-size:15px">Tocá tu nombre:</p>
+    ${ps.map(p => `<div class="socio ${p.tomado && !p.mio ? "" : "tap"}"
+        ${p.tomado && !p.mio ? "" : `data-puesto="${p.id}"`}>
+      <div class="l1"><b>${esc(p.nombre)}</b><em>${p.mio ? "sos vos" : p.tomado ? "ocupado" : "libre"}</em></div>
+      </div>`).join("")}`;
+
+  $("u-res").querySelectorAll("[data-puesto]").forEach(el => el.onclick = async () => {
+    try{ await rpc("tomar_puesto", {p_archer: el.dataset.puesto}); }
+    catch(e){ return toast(msgErr(e)); }
+    const nombre = el.querySelector("b").textContent;
+    // busco si ya tenía flechas cargadas en ese puesto
+    let previas = [];
+    try{
+      const f = await rpc("marcador", {p_codigo: cod});
+      const mio = (f || []).find(x => x.nombre === (auth.nombre || nombre));
+      previas = (mio && mio.ends) || [];
+    } catch {}
+    cur = { id:ses.id, date:ses.fecha, dist:ses.distancia, per:ses.flechas_serie,
+            endsPlan:ses.series_previstas, place:"", note:"", active:0,
+            tipo:ses.tipo, metodo:ses.metodo, cara:ses.cara,
+            archers:[{id:"me", name:auth.nombre || nombre, me:true, ends:previas}],
+            vivo:true, invitado:true, codigo:cod, puesto:el.dataset.puesto,
+            sincronizada:true };
+    save(KEY_C, cur);
+    toast("Listo, ya podés tirar");
+    renderShoot(); show("shoot");
+  });
+}
+
+/* ================= mi equipo ================= */
+const CAMPOS = [
+  {k:"nombre",   t:"Nombre de la configuración", ph:"Arco de competencia"},
+  {k:"tipo",     t:"Tipo de arco", op:["Recurvo","Compuesto","Tradicional","Barebow"]},
+  {k:"potNominal", t:"Potencia nominal (lb)", num:true, ph:"40"},
+  {k:"potReal",  t:"Potencia real a tu apertura (lb)", num:true, ph:"38,5"},
+  {k:"longitudArco", t:"Longitud del arco (pulgadas)", num:true, ph:"68"},
+  {k:"brace",    t:"Brace height (pulgadas)", num:true, ph:"9"},
+  {k:"flMarca",  t:"Flechas: marca", ph:"Easton"},
+  {k:"flModelo", t:"Flechas: modelo", ph:"ACE"},
+  {k:"spine",    t:"Spine", ph:"500"},
+  {k:"flLong",   t:"Largo de flecha (cm)", num:true, ph:"70"},
+  {k:"flPeso",   t:"Peso total de flecha (grains)", num:true, ph:"320"},
+  {k:"plumas",   t:"Plumas", ph:"Spin Wings 1,75"},
+  {k:"visor",    t:"Visor", ph:"Shibuya"},
+  {k:"estab",    t:"Estabilización", ph:"Central 30 + laterales 12"},
+  {k:"cuerda",   t:"Cuerda", ph:"Fast Flight, 18 hebras"},
+  {k:"notas",    t:"Notas", ph:"Qué cambiaste y cuándo"}
+];
+
+function renderEquipos(){
+  const b = $("equipo-body");
+  const lista = equipos.map(e => {
+    const usos = sessions.filter(s => s.equipoId === e.id).length;
+    const linea = [e.tipo, e.potReal ? e.potReal + " lb reales" : (e.potNominal ? e.potNominal + " lb" : null),
+                   e.flModelo ? e.flModelo + (e.spine ? " " + e.spine : "") : null]
+                   .filter(Boolean).join(" · ");
+    return `<div class="socio tap" data-eq="${e.id}">
+      <div class="l1"><b>${esc(e.nombre)}</b><em>${usos} ${usos === 1 ? "sesión" : "sesiones"}</em></div>
+      <div class="l2">${esc(linea || "sin datos cargados")}</div></div>`;
+  }).join("");
+
+  b.innerHTML = `
+    <h1 style="font-size:25px">Mi equipo</h1>
+    <p style="color:var(--muted);margin:6px 0 0;font-size:15.5px">
+      Cargá cada configuración que uses. Al empezar una sesión elegís con cuál tirás, y así
+      la app puede decirte si un cambio de material te mejoró o te empeoró los números.</p>
+    ${lista || '<div class="empty" style="margin-top:18px">Todavía no cargaste ninguna.</div>'}
+    <button class="primary" id="eq-new" style="margin-top:20px">Agregar configuración</button>`;
+  b.querySelectorAll("[data-eq]").forEach(el =>
+    el.onclick = () => formEquipo(equipos.find(x => x.id === el.dataset.eq)));
+  $("eq-new").onclick = () => formEquipo(null);
+  show("equipo");
+}
+
+function formEquipo(e){
+  const nuevo = !e;
+  e = e || {id:uid(), tipo:"Recurvo"};
+  const campo = c => {
+    const v = e[c.k] == null ? "" : e[c.k];
+    if(c.op) return `<label>${c.t}</label><div class="opts" data-sel="${c.k}">` +
+      c.op.map(o => `<button class="opt" data-v="${o}" aria-pressed="${v === o}">${o}</button>`).join("") + `</div>`;
+    return `<label for="f_${c.k}">${c.t}</label>
+      <input type="text" id="f_${c.k}" value="${esc(String(v))}" placeholder="${c.ph || ""}"
+        ${c.num ? 'inputmode="decimal"' : ""}>`;
+  };
+  $("equipo-form").innerHTML = `
+    <h1 style="font-size:25px">${nuevo ? "Nueva configuración" : esc(e.nombre || "Configuración")}</h1>
+    ${CAMPOS.map(campo).join("")}
+    <button class="primary" id="eq-save" style="margin-top:24px">Guardar</button>
+    ${nuevo ? "" : '<button class="danger" id="eq-del">Borrar esta configuración</button>'}`;
+
+  $("equipo-form").querySelectorAll("[data-sel]").forEach(box =>
+    box.querySelectorAll("button").forEach(btn => btn.onclick = () => {
+      e[box.dataset.sel] = btn.dataset.v;
+      box.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === btn));
+    }));
+
+  $("eq-save").onclick = () => {
+    CAMPOS.forEach(c => {
+      if(c.op) return;
+      const v = $("f_" + c.k).value.trim();
+      e[c.k] = c.num ? (v ? parseFloat(v.replace(",", ".")) : null) : v;
+    });
+    if(!e.nombre) return toast("Poné al menos un nombre");
+    e.sincronizada = false;
+    e.actualizado = new Date().toISOString();
+    const i = equipos.findIndex(x => x.id === e.id);
+    if(i < 0) equipos.push(e); else equipos[i] = e;
+    save(KEY_E, equipos);
+    syncNow(true);
+    toast("Guardado");
+    renderEquipos();
+  };
+  if(!nuevo) $("eq-del").onclick = async () => {
+    if(!await ask({title:"¿Borrar la configuración?",
+      text:"Las sesiones que la usaron conservan el nombre.", ok:"Borrar"})) return;
+    equipos = equipos.filter(x => x.id !== e.id);
+    save(KEY_E, equipos);
+    if(auth) api("/rest/v1/equipos?id=eq." + e.id, {method:"DELETE"}).catch(()=>{});
+    toast("Borrada");
+    renderEquipos();
+  };
+  show("equipo-form");
+}
+$("eq-back").onclick = () => renderAccount();
+$("eqf-back").onclick = () => renderEquipos();
+
 /* ================= club y socios ================= */
 let club = null, socios = [];
 const rpc = (fn, args) => api("/rest/v1/rpc/" + fn, {method:"POST", body: JSON.stringify(args || {})});
@@ -1432,7 +1948,10 @@ async function cargarClub(){
     if(yo && yo.rol !== auth.rol){ auth.rol = yo.rol; save(KEY_T, auth); }
     if(["entrenador","admin","superadmin"].includes(auth.rol)) await cargarDatosClub();
     $("top-club").textContent = club ? club.nombre : "recurvo";
-  } catch(e){ club = null; socios = []; }
+  } catch(e){
+    club = null; socios = [];
+    toast("No se pudo leer el club: " + msgErr(e));
+  }
 }
 
 function renderClub(){
@@ -1507,11 +2026,6 @@ function renderClub(){
   });
   show("club");
 }
-function msgErr(e){
-  const t = (e && e.message) || "";
-  const m = t.match(/"message":"([^"]+)"/);
-  return m ? m[1] : (t.slice(0,70) || "No se pudo");
-}
 /* ================= mi cuenta ================= */
 function renderAccount(motivo){
   const b = $("account-body");
@@ -1524,6 +2038,7 @@ function renderAccount(motivo){
           : "Sin cuenta la app funciona igual, pero los datos quedan solo en este teléfono."}
         Con cuenta se copian al servidor del club y los recuperás en cualquier celular.</p>
       <button class="primary" id="ac-go" style="margin-top:20px">Entrar o crear cuenta</button>
+      <button class="ghost" id="ac-eq" style="margin-top:9px">Mi equipo${equipos.length ? " · " + equipos.length : ""}</button>
       <div class="chart-head"><h2>Respaldos</h2></div>
       <div class="tools"><button id="e1">Guardar respaldo</button>
         <button id="e3">Levantar respaldo</button>
@@ -1559,6 +2074,7 @@ function renderAccount(motivo){
         Guardar deja un archivo con todo tu historial para mandarte por mail. Levantar lo
         vuelve a cargar acá o en un teléfono nuevo. Bajar del servidor recupera tus sesiones
         desde tu cuenta, sin necesidad de archivo.</p>
+      <button class="ghost" id="ac-eq">Mi equipo${equipos.length ? " · " + equipos.length : ""}</button>
       <button class="ghost" id="ac-out2" style="margin-top:26px">Cerrar sesión</button>
       <p class="hint" style="margin-top:18px">versión ${VERSION} ·
         <button id="upd2" style="color:var(--gold);text-decoration:underline">buscar actualización</button></p>`;
@@ -1566,6 +2082,7 @@ function renderAccount(motivo){
     $("ac-out2").onclick = () => { salir(); renderAccount(); };
     $("e4").onclick = async () => { await syncNow(false); renderAccount(); };
   }
+  $("ac-eq").onclick = renderEquipos;
   $("e1").onclick = exportJson;
   $("e2").onclick = exportCsv;
   $("e3").onclick = () => $("file").click();
@@ -1621,16 +2138,29 @@ $("undo").onclick = undo;
 $("finish").onclick = () => finish(false);
 $("f-place").oninput = e => form.place = e.target.value.trim();
 $("start").onclick = () => {
+  if(form.modo === "Grupo" && form.vivo === "Cada uno en su celular"){
+    if(!form.nombres.length) return toast("Agregá al menos un compañero");
+    return crearEnVivo();
+  }
   const archers = [{id:"me", name:"Yo", me:true, ends:[]}];
   if(form.modo === "Grupo") form.nombres.forEach((n,i) => archers.push({id:"a"+i, name:n, ends:[]}));
   cur = { id:uid(), date:new Date().toISOString(), dist:form.dist, per:form.per,
           endsPlan:form.ends, place:form.place, note:"", archers, active:0,
           tipo: form.tipo === "Competencia" ? "competencia" : "entrenamiento",
           metodo: form.metodo === "Diana" ? "diana" : "teclado",
-          cara: form.metodo === "Diana" ? form.cara : null };
+          cara: form.metodo === "Diana" ? form.cara : null,
+          equipoId: form.equipoId,
+          equipoNombre: (equipos.find(e => e.id === form.equipoId) || {}).nombre || null,
+          cond: { lugar: form.lugar, viento: form.lugar === "Exterior" ? form.viento : null } };
   renderShoot(); show("shoot");
 };
-$("go-resume").onclick = () => { renderShoot(); show("shoot"); };
+$("go-resume").onclick = () => {
+  if(cur && cur.vivo && !cur.invitado) return renderVivo();
+  renderShoot(); show("shoot");
+};
+$("go-unirme").onclick = () => renderUnirme("");
+$("vivo-back").onclick = () => show("home");
+$("un-back").onclick = () => show("home");
 
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault(); deferredPrompt = e;
@@ -1665,6 +2195,7 @@ async function actualizarApp(){
   buildPad();
   db = await openDB();
   sessions = (await hydrate(KEY_S)) || [];
+  equipos = (await hydrate(KEY_E)) || [];
   await hydrate(KEY_P);
   const pending = await hydrate(KEY_C);
   if(pending && (pending.archers || pending.ends)){
