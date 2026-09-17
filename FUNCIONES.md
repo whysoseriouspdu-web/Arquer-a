@@ -1,4 +1,4 @@
-# Qué hace la app — versión 10.1
+# Qué hace la app — versión 10.3
 
 ## Navegación
 
@@ -179,3 +179,45 @@ el link completo como el código suelto. Si no hay permiso de cámara, lo dice y
 siempre queda la opción de escribir los cinco caracteres a mano.
 
 La cámara se apaga sola al salir de la pantalla o al encontrar el código.
+
+
+## Orden de carga de las flechas
+
+En arquería la planilla se llena de mayor a menor. Con ese orden, la "primera"
+flecha de la serie es siempre la mejor y la "última" siempre la peor, por
+definición y no por cómo tiraste. Cualquier análisis del ritmo dentro de la serie
+basado en ese orden es un espejismo.
+
+La app ahora lo detecta sola: si la mayoría de tus series vienen en orden
+decreciente, desactiva el gráfico "Por posición en la serie" y las dos sugerencias
+que dependían de él, y explica por qué en la pantalla de estadísticas.
+
+En Mi cuenta podés forzarlo:
+
+- **Automático** (recomendado) — lo decide según tus datos.
+- **Como las tiro** — si cargás en el orden real de tiro; habilita el análisis.
+- **De mayor a menor** — si siempre usás la convención de planilla.
+
+El análisis **por número de serie** no está afectado: comparar la primera serie
+con la última sigue siendo válido, porque ahí el orden sí es el real.
+
+
+## Dentro de la serie
+
+Reemplaza al análisis por posición, y es mejor: usa el conjunto de valores de cada
+serie, no la secuencia, así que vale igual con planilla de mayor a menor.
+
+- **Techo y piso** — promedio de las mejores flechas de cada serie contra el de las
+  peores. El techo es lo que tu técnica ya puede hacer; la diferencia con el piso
+  es margen disponible sin aprender nada nuevo.
+- **Amplitud media** — cuántos puntos hay entre tu mejor y tu peor flecha de cada
+  serie. Mide repetición del gesto.
+- **Series con una flecha caída** y su **costo por ronda** — cuántas veces una sola
+  flecha arruina la tanda, y cuántos puntos ganarías por ronda de 60 si esa flecha
+  se acercara apenas al resto. Suele ser el número más grande y el más fácil de
+  corregir, porque no es técnica sino saber cortar el tiro.
+- **Series limpias** y mejor racha — porcentaje de series sin nada por debajo de 7.
+- **Variación entre series** — qué parte de tu dispersión ocurre entre tandas y qué
+  parte dentro de cada una. Mucha variación entre series apunta a foco y rutina;
+  mucha dentro, a ejecución flecha a flecha. Son problemas distintos con soluciones
+  distintas, y hasta ahora la app no los distinguía.

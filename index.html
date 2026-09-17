@@ -411,9 +411,10 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
-const VERSION = "10.1";
+const VERSION = "10.3";
 const KEY_P = "arqueria.companeros";
 const KEY_E = "arqueria.equipos";
+const KEY_O = "arqueria.orden";
 const KEY_T = "arqueria.sesion_cuenta";
 const KEY_D = "arqueria.borradas";
 const KEY_L = "arqueria.ultima_sync";
@@ -1203,6 +1204,9 @@ function planillasMias(){
   return sessions.filter(s => flat(mine(s)).length).map(s => ({s, a:mine(s)}));
 }
 
+// "auto" detecta solo; "planilla" y "tiro" lo fuerzan
+let ordenForzado = "auto";
+
 function analizar(pl){
   const arrows = [];
   pl.forEach(({a}) => a.ends.forEach(e => e.forEach(c => arrows.push(val(c)))));
@@ -1266,12 +1270,30 @@ function analizar(pl){
   const varSesion = proms.length >= 4
     ? Math.sqrt(proms.reduce((t,v) => t + (v-mediaS)**2, 0)/proms.length) : null;
 
+  // ¿las flechas están cargadas de mayor a menor, como manda la planilla?
+  // Si es así, la posición dentro de la serie no dice nada del orden real de tiro.
+  let conVariacion = 0, decrecientes = 0;
+  pl.forEach(({a}) => a.ends.forEach(e => {
+    if(e.length < 3) return;
+    const v = e.map(val);
+    if(new Set(v).size < 2) return;              // todas iguales no informa nada
+    conVariacion++;
+    let baja = true;
+    for(let i = 1; i < v.length; i++) if(v[i] > v[i-1]) { baja = false; break; }
+    if(baja) decrecientes++;
+  }));
+  const pctOrden = conVariacion ? decrecientes/conVariacion : 0;
+  // con azar puro esto sería casi cero; arriba de 0,75 es convención de planilla
+  const ordenPlanilla = ordenForzado === "planilla" ? true
+                      : ordenForzado === "tiro"     ? false
+                      : (conVariacion >= 8 && pctOrden > 0.75);
+
   // promedio según qué número de flecha es dentro de la serie
   const porPos = {};
   pl.forEach(({a}) => a.ends.forEach(e => e.forEach((c,j) => {
     (porPos[j] = porPos[j] || []).push(val(c));
   })));
-  const posiciones = Object.keys(porPos).map(j => ({
+  const posiciones = ordenPlanilla ? [] : Object.keys(porPos).map(j => ({
     pos: +j+1, prom: porPos[j].reduce((t,v)=>t+v,0)/porPos[j].length, flechas: porPos[j].length
   })).filter(x => x.flechas >= 8);
 
@@ -1334,6 +1356,56 @@ function analizar(pl){
     };
   }
 
+  // ---- análisis dentro de la serie, sin depender del orden de carga ----
+  // Todo lo de acá usa el conjunto de valores de cada serie, no la secuencia,
+  // así que vale igual con planilla de mayor a menor.
+  const series = [];
+  pl.forEach(({a}) => a.ends.forEach(e => {
+    if(e.length >= 3) series.push(e.map(val).sort((x,y) => y-x));
+  }));
+  let intra = null;
+  if(series.length >= 8){
+    const prom = arr => arr.reduce((t,v)=>t+v,0)/arr.length;
+    const k = Math.max(1, Math.floor(series[0].length/2));
+    const rangos = series.map(v => v[0] - v[v.length-1]);
+    const techos = series.map(v => prom(v.slice(0, k)));
+    const pisos  = series.map(v => prom(v.slice(-k)));
+
+    // una flecha se considera salvaje si queda muy por debajo del resto de su serie
+    let salvajes = 0, costo = 0;
+    series.forEach(v => {
+      const resto = v.slice(0, -1);
+      const promResto = prom(resto);
+      if(promResto - v[v.length-1] >= 2.5) salvajes++;
+      costo += v[v.length-2] - v[v.length-1];   // lo que ganarías si la peor igualara a la anteúltima
+    });
+
+    // series sin ninguna flecha por debajo de 7
+    let limpias = 0, racha = 0, mejorRacha = 0;
+    series.forEach(v => {
+      if(v[v.length-1] >= 7){ limpias++; racha++; mejorRacha = Math.max(mejorRacha, racha); }
+      else racha = 0;
+    });
+
+    // ¿la variación está dentro de cada serie o entre una serie y otra?
+    const mediasSerie = series.map(prom);
+    const dentro = prom(series.map(v => { const mu = prom(v);
+      return prom(v.map(x => (x-mu)**2)); }));
+    const muG = prom(mediasSerie);
+    const entre = prom(mediasSerie.map(x => (x-muG)**2));
+
+    intra = {
+      series: series.length,
+      rango: prom(rangos),
+      techo: prom(techos), piso: prom(pisos),
+      pctSalvaje: 100*salvajes/series.length,
+      costoRonda: (costo/series.length) * 10,        // proyectado a una ronda de 10 series
+      pctLimpias: 100*limpias/series.length, mejorRacha,
+      dentro, entre,
+      pctEntre: (dentro + entre) ? 100*entre/(dentro + entre) : 0
+    };
+  }
+
   // evolución mes a mes
   const meses = {};
   pl.forEach(({s,a}) => {
@@ -1346,6 +1418,7 @@ function analizar(pl){
     .map(k => ({mes:k, prom:meses[k].suma/meses[k].n, sesiones:meses[k].sesiones}));
 
   return { n, suma, prom, desv, curva, primeras, ultimas, dist, posiciones,
+           ordenPlanilla, pctOrden, intra,
            mejorSerie, mejorSesion, mensual, grupo: agrup, porEquipo, propViento,
            entrenamiento, competencia, tendencia, recientes, diasDesde, varSesion,
            proyeccion: prom*60,
@@ -1391,7 +1464,32 @@ function sugerencias(m){
     out.push({alta:true, t:"Rendís menos en competencia",
       d:`Entrenando promediás ${m.entrenamiento.toFixed(2)} y compitiendo ${m.competencia.toFixed(2)}. La diferencia es de manejo de presión, no de técnica. Simulá rondas completas con tiempo y puntaje anotado, y tirá delante de gente que te mire.`});
 
-  if(m.posiciones.length >= 3){
+  if(m.intra){
+    const q = m.intra;
+    if(q.pctSalvaje > 25)
+      out.push({alta:true, t:"Una flecha te arruina la serie",
+        d:`En el ${q.pctSalvaje.toFixed(0)}% de tus series hay una flecha muy por debajo del resto. Si esas se acercaran apenas a la anteúltima, ganarías del orden de ${q.costoRonda.toFixed(0)} puntos por ronda de 60 flechas sin cambiar nada de tu técnica. El trabajo acá no es de agrupación sino de corte: aprender a bajar el arco cuando la ejecución no salió, en vez de soltar igual.`});
+
+    if(q.rango >= 4)
+      out.push({alta:true, t:"Series muy desparejas",
+        d:`Entre tu mejor y tu peor flecha de cada serie hay ${q.rango.toFixed(1)} puntos de diferencia en promedio. Cuando la amplitud es tan grande, el problema suele estar en la repetición del gesto, no en la puntería. Blanco ciego a corta distancia, series de tres flechas y foco en que las tres se sientan iguales.`});
+    else if(q.rango <= 2.2)
+      out.push({alta:false, t:"Series muy parejas",
+        d:`La diferencia entre tu mejor y peor flecha de cada serie es de apenas ${q.rango.toFixed(1)} puntos. Repetís bien dentro de la tanda; lo que te queda por ganar está en subir el nivel general, no en tapar agujeros.`});
+
+    if(q.techo - q.piso >= 2.5)
+      out.push({alta:false, t:`Tu techo es ${q.techo.toFixed(2)} y tu piso ${q.piso.toFixed(2)}`,
+        d:`Las mejores flechas de cada serie promedian ${q.techo.toFixed(2)} y las peores ${q.piso.toFixed(2)}. El techo muestra lo que tu técnica ya es capaz de hacer; toda la diferencia con el piso es margen disponible sin aprender nada nuevo, solo sosteniendo lo que ya sabés.`});
+
+    if(q.pctEntre > 55)
+      out.push({alta:false, t:"Se te va el foco de una serie a otra",
+        d:`El ${q.pctEntre.toFixed(0)}% de tu variación está entre series y no dentro de ellas: cuando una serie sale bien, salen las seis, y cuando sale mal, también. Eso apunta a atención o rutina entre tandas más que a ejecución. Probá una rutina fija de treinta segundos antes de cada serie y anotá en las notas cómo estabas.`});
+    else if(q.pctEntre < 25 && q.rango > 3)
+      out.push({alta:false, t:"La variación está dentro de cada serie",
+        d:`Casi toda tu variación pasa entre flechas de una misma tanda, no entre tandas. Es ejecución flecha a flecha: la rutina previa a cada tiro es lo que más te va a rendir.`});
+  }
+
+  if(!m.ordenPlanilla && m.posiciones.length >= 3){
     const p1 = m.posiciones[0], ult = m.posiciones[m.posiciones.length-1];
     const resto = m.posiciones.slice(1).reduce((t,x)=>t+x.prom,0)/(m.posiciones.length-1);
     if(p1.prom < resto - 0.4)
@@ -1482,6 +1580,32 @@ function htmlStats(m, titulo, sub){
       </div><span>${x.prom.toFixed(2)}</span></div>`;
     }).join("")}` : "";
 
+  const avisoOrden = m.ordenPlanilla ? `
+    <div class="sug"><b>No analizo la posición dentro de la serie</b>
+      <p>Tus flechas vienen cargadas de mayor a menor, como se anota en planilla.
+      Con ese orden, la "primera" es siempre la mejor y la "última" siempre la peor,
+      así que cualquier conclusión sobre el ritmo dentro de la serie sería falsa.
+      Si querés ese análisis, cargalas en el orden real en que las tirás y avisale a la
+      app en Mi cuenta.</p></div>` : "";
+
+  const intraHtml = m.intra ? `
+    <div class="chart-head"><h2>Dentro de la serie</h2><em>${m.intra.series} series</em></div>
+    <table class="tabla">
+      <tr><td>Techo<br><span style="color:var(--muted);font-size:14px">media de tus mejores flechas</span></td>
+          <td>${m.intra.techo.toFixed(2)}</td></tr>
+      <tr><td>Piso<br><span style="color:var(--muted);font-size:14px">media de tus peores flechas</span></td>
+          <td>${m.intra.piso.toFixed(2)}</td></tr>
+      <tr><td>Amplitud media<br><span style="color:var(--muted);font-size:14px">mejor menos peor de cada serie</span></td>
+          <td>${m.intra.rango.toFixed(1)}</td></tr>
+      <tr><td>Series con una flecha caída</td><td>${m.intra.pctSalvaje.toFixed(0)}%</td></tr>
+      <tr><td>Costo de esas flechas<br><span style="color:var(--muted);font-size:14px">por ronda de 60</span></td>
+          <td>${m.intra.costoRonda.toFixed(0)} pts</td></tr>
+      <tr><td>Series sin nada bajo 7</td><td>${m.intra.pctLimpias.toFixed(0)}%</td></tr>
+      <tr><td>Mejor racha de series limpias</td><td>${m.intra.mejorRacha}</td></tr>
+      <tr><td>Variación entre series<br><span style="color:var(--muted);font-size:14px">el resto es dentro de cada serie</span></td>
+          <td>${m.intra.pctEntre.toFixed(0)}%</td></tr>
+    </table>` : "";
+
   const pos = m.posiciones.length >= 3 ? `
     <div class="chart-head"><h2>Por posición en la serie</h2><em>1ª flecha, 2ª…</em></div>
     ${m.posiciones.map(p => `<div class="bar"><span>${p.pos}ª</span><div class="track">
@@ -1548,6 +1672,8 @@ function htmlStats(m, titulo, sub){
     <div class="chart-head"><h2>Dónde caen tus flechas</h2></div>
     ${m.distrib.filter(x => x.p > 0).map(x => barra(x.v, x.p)).join("")}
     ${mapa}
+    ${intraHtml}
+    ${avisoOrden}
     ${pos}
     ${curva}
     ${meses}
@@ -2168,13 +2294,31 @@ function renderAccount(motivo){
         Guardar deja un archivo con todo tu historial para mandarte por mail. Levantar lo
         vuelve a cargar acá o en un teléfono nuevo. Bajar del servidor recupera tus sesiones
         desde tu cuenta, sin necesidad de archivo.</p>
-      <button class="ghost" id="ac-eq">Mi equipo${equipos.length ? " · " + equipos.length : ""}</button>
+      <div class="chart-head"><h2>Cómo cargo las flechas</h2></div>
+      <div class="opts" id="op-orden"></div>
+      <p class="hint" style="text-align:left;margin:9px 0 0">
+        Si las anotás de mayor a menor, como en la planilla oficial, el orden no refleja
+        cómo tiraste y la app no analiza la posición dentro de la serie. Con "automático"
+        lo detecta sola.</p>
+      <button class="ghost" id="ac-eq" style="margin-top:20px">Mi equipo${equipos.length ? " · " + equipos.length : ""}</button>
       <button class="ghost" id="ac-out2" style="margin-top:26px">Cerrar sesión</button>
       <p class="hint" style="margin-top:18px">versión ${VERSION} ·
         <button id="upd2" style="color:var(--gold);text-decoration:underline">buscar actualización</button></p>`;
     $("ac-sy2").onclick = () => syncNow(false).then(() => renderAccount());
     $("ac-out2").onclick = () => { salir(); renderAccount(); };
     $("e4").onclick = async () => { await syncNow(false); renderAccount(); };
+  }
+  const opciones = [["auto","Automático"],["tiro","Como las tiro"],["planilla","De mayor a menor"]];
+  const box = $("op-orden");
+  if(box){
+    box.innerHTML = "";
+    opciones.forEach(([k,t]) => {
+      const b = document.createElement("button");
+      b.className = "opt"; b.textContent = t;
+      b.setAttribute("aria-pressed", ordenForzado === k);
+      b.onclick = () => { ordenForzado = k; save(KEY_O, k); renderAccount(); };
+      box.appendChild(b);
+    });
   }
   $("ac-eq").onclick = renderEquipos;
   $("e1").onclick = exportJson;
@@ -2290,6 +2434,7 @@ async function actualizarApp(){
   db = await openDB();
   sessions = (await hydrate(KEY_S)) || [];
   equipos = (await hydrate(KEY_E)) || [];
+  ordenForzado = (await hydrate(KEY_O)) || "auto";
   await hydrate(KEY_P);
   const pending = await hydrate(KEY_C);
   if(pending && (pending.archers || pending.ends)){
