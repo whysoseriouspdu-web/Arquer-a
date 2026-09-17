@@ -411,7 +411,7 @@
 const KEY_S = "arqueria.sesiones";
 const KEY_C = "arqueria.encurso";
 const KEY_B = "arqueria.ultimorespaldo";
-const VERSION = "10.3";
+const VERSION = "10.4";
 const KEY_P = "arqueria.companeros";
 const KEY_E = "arqueria.equipos";
 const KEY_O = "arqueria.orden";
@@ -471,24 +471,44 @@ function idbGet(key){
 function idbSet(key,v){ try{ db && db.transaction("kv","readwrite").objectStore("kv").put(v,key); }catch{} }
 function idbDel(key){ try{ db && db.transaction("kv","readwrite").objectStore("kv").delete(key); }catch{} }
 
+/* Cada escritura lleva un número de revisión. Al arrancar gana la copia
+   con la revisión más alta, no la que tenga más datos: si no, un borrado
+   que falla en un lado revive al leer del otro. */
+const revs = {};
 function load(key){ return cache[key] || null; }
 function save(key, data){
   cache[key] = data;
-  idbSet(key, data);
-  try { localStorage.setItem(key, JSON.stringify(data)); }
+  revs[key] = (revs[key] || 0) + 1;
+  const sobre = {__rev: revs[key], d: data};
+  idbSet(key, sobre);
+  try { localStorage.setItem(key, JSON.stringify(sobre)); }
   catch { toast("El navegador no deja guardar. Exportá un respaldo ya."); }
 }
-function wipe(key){ cache[key] = null; idbDel(key); try{ localStorage.removeItem(key); }catch{} }
+function wipe(key){
+  cache[key] = null;
+  revs[key] = (revs[key] || 0) + 1;
+  idbDel(key);
+  try{ localStorage.removeItem(key); }catch{}
+}
+// acepta el formato viejo (el dato pelado) y el nuevo (con revisión)
+function abrir(v){
+  if(v && typeof v === "object" && v.__rev !== undefined) return {rev:v.__rev, d:v.d};
+  return v == null ? null : {rev:0, d:v};
+}
 async function hydrate(key){
-  const a = await idbGet(key);
+  const a = abrir(await idbGet(key));
   let b = null;
-  try { b = JSON.parse(localStorage.getItem(key)); } catch {}
-  const size = v => Array.isArray(v) ? v.length : (v ? 1 : 0);
-  const win = size(a) >= size(b) ? a : b;
-  cache[key] = win || null;
-  if(win) save(key, win);
+  try { b = abrir(JSON.parse(localStorage.getItem(key))); } catch {}
+  let win;
+  if(a && b) win = a.rev !== b.rev ? (a.rev > b.rev ? a : b)
+                                   : (tam(a.d) >= tam(b.d) ? a : b);
+  else win = a || b;
+  revs[key] = win ? win.rev : 0;
+  cache[key] = win ? win.d : null;
+  if(win) save(key, win.d);        // deja las dos copias iguales y con revisión nueva
   return cache[key];
 }
+const tam = v => Array.isArray(v) ? v.length : (v ? 1 : 0);
 async function checkDurability(){
   try { if(!await navigator.storage.persisted()) await navigator.storage.persist(); } catch {}
   const installed = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -880,6 +900,9 @@ async function finish(exit){
 }
 
 /* ---------- detalle ---------- */
+// mía = la cargué yo; las de un anotador ajeno solo se ocultan
+const esMia = s => !auth || !s.owner || s.owner === auth.user.id;
+
 function renderDetail(id){
   const s = sessions.find(x => x.id === id); if(!s) return;
   const arqs = archersOf(s);
@@ -914,15 +937,27 @@ function renderDetail(id){
     </div>
     ${bloques}
     ${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
-    <button class="danger" id="del">Borrar esta sesión</button>`;
+    <button class="danger" id="del">${
+      esMia(s) ? "Borrar esta sesión" : "Quitar de mi historial"}</button>`;
   $("del").onclick = async () => {
-    if(!await ask({title:"¿Borrar la sesión?", text:"No se puede deshacer.", ok:"Borrar"})) return;
+    const mia = esMia(s);
+    if(!await ask({title: mia ? "¿Borrar la sesión?" : "¿Quitarla de tu historial?",
+      text: mia ? "No se puede deshacer."
+                : "La cargó otro anotador, así que no se borra para los demás: deja de aparecerte a vos.",
+      ok: mia ? "Borrar" : "Quitar"})) return;
     const era = sessions.find(x => x.id === id);
     sessions = sessions.filter(x => x.id !== id);
     save(KEY_S, sessions);
+    // control: si alguna copia quedó con la sesión, avisar en vez de fingir que se borró
+    setTimeout(async () => {
+      const g = await idbGet(KEY_S);
+      const abierto = abrir(g);
+      const sigue = abierto && Array.isArray(abierto.d) && abierto.d.some(x => x.id === id);
+      if(sigue) toast("El teléfono no dejó guardar el cambio. Probá cerrar y abrir la app.");
+    }, 400);
     if(era && era.sincronizada && auth) save(KEY_D, [...(load(KEY_D) || []), id]);
-    toast("Sesión borrada");
-    if(auth) syncNow(false);
+    toast(mia ? "Sesión borrada" : "Quitada de tu historial");
+    if(auth) syncNow(!mia);        // si es ajena, el error del servidor no importa
     renderHome(); show("home");
   };
   show("detail");
@@ -1079,7 +1114,7 @@ function deFila(f){
   const arqs = (f.session_archers || []).map(a => ({
     id:a.id, name:a.nombre, me:a.profile_id === auth.user.id, ends:a.ends || []}));
   if(!arqs.some(a => a.me) && arqs.length) arqs[0].me = true;
-  return { id:f.id, date:f.fecha, dist:f.distancia, per:f.flechas_serie, tipo:f.tipo,
+  return { id:f.id, owner:f.owner, date:f.fecha, dist:f.distancia, per:f.flechas_serie, tipo:f.tipo,
            metodo:f.metodo, cara:f.cara, equipoId:f.equipo_id, cond:f.condiciones,
            equipoNombre:(equipos.find(e => e.id === f.equipo_id) || {}).nombre || null,
            endsPlan:f.series_previstas, place:f.lugar || "", note:f.nota || "",

@@ -1,4 +1,4 @@
-const CACHE = "arqueria-v10-3";
+const CACHE = "arqueria-v10-4";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./jsqr.min.js", "./logo-club.png", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"
